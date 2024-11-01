@@ -1,0 +1,13 @@
+name: stacc
+display_name: Counting
+# see https://napari.org/stable/plugins/manifest.html for valid categories
+categories: ["Image Processing"]
+contributions:
+  commands:
+    - id: stacc.counting
+      python_name: stacc.stacc_plugin.counting:counting
+      title: Counting plugin
+
+  widgets:
+    - command: stacc.counting
+      display_name: Counting
