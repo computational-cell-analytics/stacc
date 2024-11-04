@@ -4,6 +4,17 @@ import torch
 from .unet_2d import UNet2d
 
 
+def get_postprocessing_parameters(model_name):
+    assert model_name in ("cells", "colonies")
+    if model_name == "cells":
+        min_distance = 2
+        threshold_abs = 1.0
+    else:
+        min_distance = 15
+        threshold_abs = 2.4
+    return min_distance, threshold_abs
+
+
 def get_model(model_name):
     assert model_name in ("cells", "colonies")
     fpath = os.path.split(__file__)[0]

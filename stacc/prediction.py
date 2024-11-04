@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from skimage.feature import peak_local_max
 
-from .util import get_model, standardize
+from .util import get_model, standardize, get_postprocessing_parameters
 
 
 def _pad_image(input_, min_divisible_):
@@ -97,9 +97,11 @@ def main():
     print("Counting", args.model, "in", len(inputs), "image(s).")
 
     model = get_model(args.model)
+    min_distance, threshold_abs = get_postprocessing_parameters(args.model)
+
     for image_path in inputs:
         image = imageio.imread(image_path)
-        prediction = run_counting(model, image)
+        prediction = run_counting(model, image, min_distance=min_distance, threshold_abs=threshold_abs)
 
         count = len(prediction)
         print("The count for", image_path, "is:", count)
