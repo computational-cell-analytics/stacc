@@ -1,3 +1,8 @@
+"""The U-Net implementation was copied from
+https://github.com/constantinpape/torch-em/blob/main/torch_em/model/unet.py
+to avoid depneding on other torch-em requirements.
+"""
+
 import torch
 import torch.nn as nn
 
@@ -10,6 +15,8 @@ import torch.nn as nn
 
 
 class AccumulateChannels(nn.Module):
+    """@private
+    """
     def __init__(
         self,
         invariant_channels,
@@ -40,30 +47,44 @@ class AccumulateChannels(nn.Module):
 
 
 def affinities_to_boundaries(aff_channels, accumulator="max"):
+    """@private
+    """
     return AccumulateChannels(None, aff_channels, accumulator)
 
 
 def affinities_with_foreground_to_boundaries(aff_channels, fg_channel=(0, 1), accumulator="max"):
+    """@private
+    """
     return AccumulateChannels(fg_channel, aff_channels, accumulator)
 
 
 def affinities_to_boundaries2d():
+    """@private
+    """
     return affinities_to_boundaries((0, 2))
 
 
 def affinities_with_foreground_to_boundaries2d():
+    """@private
+    """
     return affinities_with_foreground_to_boundaries((1, 3))
 
 
 def affinities_to_boundaries3d():
+    """@private
+    """
     return affinities_to_boundaries((0, 3))
 
 
 def affinities_with_foreground_to_boundaries3d():
+    """@private
+    """
     return affinities_with_foreground_to_boundaries((1, 4))
 
 
 def affinities_to_boundaries_anisotropic():
+    """@private
+    """
     return AccumulateChannels(None, (1, 3), "max")
 
 
@@ -74,6 +95,8 @@ POSTPROCESSING = {
     "affinities_to_boundaries3d": affinities_to_boundaries3d,
     "affinities_with_foreground_to_boundaries3d": affinities_with_foreground_to_boundaries3d,
 }
+"""@private
+"""
 
 
 #
@@ -81,7 +104,7 @@ POSTPROCESSING = {
 #
 
 class UNetBase(nn.Module):
-    """
+    """@private
     """
     def __init__(
         self,
@@ -235,6 +258,8 @@ def _update_conv_kwargs(kwargs, scale_factor):
 
 
 class Encoder(nn.Module):
+    """@private
+    """
     def __init__(
         self,
         features,
@@ -282,6 +307,8 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
+    """@private
+    """
     def __init__(
         self,
         features,
@@ -347,6 +374,8 @@ class Decoder(nn.Module):
 
 
 def get_norm_layer(norm, dim, channels, n_groups=32):
+    """@private
+    """
     if norm is None:
         return None
     if norm == "InstanceNorm":
@@ -363,6 +392,8 @@ def get_norm_layer(norm, dim, channels, n_groups=32):
 
 
 class ConvBlock(nn.Module):
+    """@private
+    """
     def __init__(self, in_channels, out_channels, dim,
                  kernel_size=3, padding=1, norm="InstanceNorm"):
         super().__init__()
@@ -397,6 +428,8 @@ class ConvBlock(nn.Module):
 
 
 class Upsampler(nn.Module):
+    """@private
+    """
     def __init__(self, scale_factor,
                  in_channels, out_channels,
                  dim, mode):
@@ -419,11 +452,15 @@ class Upsampler(nn.Module):
 #
 
 class ConvBlock2d(ConvBlock):
+    """@private
+    """
     def __init__(self, in_channels, out_channels, **kwargs):
         super().__init__(in_channels, out_channels, dim=2, **kwargs)
 
 
 class Upsampler2d(Upsampler):
+    """@private
+    """
     def __init__(self, scale_factor,
                  in_channels, out_channels,
                  mode="bilinear"):
@@ -432,6 +469,8 @@ class Upsampler2d(Upsampler):
 
 
 class UNet2d(UNetBase):
+    """@private
+    """
     def __init__(
         self,
         in_channels,

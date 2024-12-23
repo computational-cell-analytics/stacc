@@ -22,7 +22,23 @@ def _pad_image(input_, min_divisible_):
     return input_, crop_padding
 
 
-def run_counting(model, image, min_distance=10, threshold_abs=1.0):
+def run_counting(
+    model: torch.nn.Module,
+    image: np.ndarray,
+    min_distance: float = 10,
+    threshold_abs: float = 1.0,
+) -> np.ndarray:
+    """Predict object centroid coordinates for an input image.
+
+    Args:
+        model: The U-Net trained for the counting task.
+        image: The image data.
+        min_distance: The minimal distance between detected objects, in pixels.
+        threshold_abs: The threshold for detecting an object, with respect to the output predictions.
+
+    Returns:
+        The coordinates of predicted objects.
+    """
     model.eval()
 
     # Process the image for our model so that it has the dimensions C x Y x X.
@@ -64,6 +80,8 @@ def _get_inputs(input_, pattern):
 
 
 def main():
+    """@private
+    """
     import argparse
     import pandas as pd
     from pathlib import Path
