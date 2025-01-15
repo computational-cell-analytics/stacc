@@ -1,16 +1,14 @@
 import argparse
 import json
-from PIL import ImageFile
-from colony_utils import DataAugmentations
-from torch_em.transform.augmentation import get_augmentations
 import torch
+from PIL import ImageFile
 from colony_utils import split_dict_dataset
 from colony_utils import TrainUNET2D
 from colony_utils import CreateDataLoader
 from colony_utils import PRLoss
 from torch_em.model import UNet2d
 from colony_utils.utils import get_in_channels
-
+# change imports to utils
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def main(args):
@@ -21,15 +19,16 @@ def main(args):
         parameters_dict = json.load(file)
 
     # Get parameters from config file
+    # festlegen?
     patch_shape = tuple(parameters_dict["patch_shape"])
     batch_size = parameters_dict["batch_size"]
     num_workers = int(parameters_dict["num_workers"])
     my_iterations = parameters_dict["my_iterations"]
     alpha_loss = parameters_dict["alpha_loss"]
+    # dieser path ist ja sehr individuell, müsste required sein
     checkpoint_path = parameters_dict["checkpoints"]
     model_name = parameters_dict["model_name"]
     learning_rate = parameters_dict["learning_rate"]
-    augmentations = parameters_dict["augmentations"]
     pretrained = True if parameters_dict["pretrained"] == 1 else False
     json_dataset = parameters_dict["dataset"]
     epsilon = parameters_dict["eps"]
@@ -43,31 +42,19 @@ def main(args):
 
     train_images, train_labels, val_images, val_labels, test_images, test_labels = split_dict_dataset(dict_dataset)
     
-    
-    print(f"Start Training: {model_name}.")
-    if augmentations == '1':
-        raw_transform = DataAugmentations(p=0.25)
-        transform = get_augmentations(ndim=2)
-    elif augmentations == '0':
-        raw_transform = None
-        transform = None
-
-
     train_loader, val_loader, _ = CreateDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, 
-                                                    raw_transform=raw_transform, transform=transform, 
-                                                    patch_shape=patch_shape, num_workers=num_workers, batch_size=batch_size, eps=epsilon, sigma=sigma, lower_bound=lower_bound, upper_bound=upper_bound)
+                                                    patch_shape=patch_shape, num_workers=num_workers, batch_size=batch_size, 
+                                                    eps=epsilon, sigma=sigma, lower_bound=lower_bound, upper_bound=upper_bound)
 
-
-    # save_samples(train_loader, '/scratch-emmy/projects/nim00007/data/stacc/train', n_samples=3)
-    # save_samples(val_dataloader, '/scratch-emmy/projects/nim00007/data/stacc/val', n_samples=5)
-    
     in_channels = get_in_channels(train_images[0])
     model = UNet2d(in_channels=in_channels, out_channels=1)
     if pretrained:    
         device = torch.cuda.current_device()
         state = torch.load(checkpoint_path, map_location=torch.device(device))['model_state']
         model.load_state_dict(state) 
-
+    
+    print(f"Start Training: {model_name}.")
+    # PR LOSS is just L2 loss... rewrite for clarity
     TrainUNET2D(model_name=model_name,
                 model=model,
                 train_loader=train_loader,
@@ -77,12 +64,10 @@ def main(args):
                 iterations=my_iterations,
                 device=torch.device("cuda"),
                 save_root = "/scratch-emmy/usr/nimjjere/models")
+    print(f"Training done.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config", type=str)
-
-    args = parser.parse_args()
-
-    
+    args = parser.parse_args() 
     main(args)

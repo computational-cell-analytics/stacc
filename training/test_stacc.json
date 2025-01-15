@@ -1,0 +1,19 @@
+{
+    "patch_shape": [2928, 2928],
+    "batch_size": 2,
+    "num_workers": 6,
+    "my_iterations": 100,
+    "alpha_loss": 1,
+    "model_name": "test_stacc",
+    "sigma": null,
+    "learning_rate": 1e-4,
+    "eps": 0.00001,
+    "augmentations": "0",
+    "pretrained": 1,
+    "checkpoints": "/scratch-emmy/usr/nimjjere/models/checkpoints/stacc_10_30/best.pt",
+    "test_dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar.json",
+    "dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar_and_sartorius.json",
+    "lower_bound": null,
+    "upper_bound": null,
+    "_comment": ""
+}
