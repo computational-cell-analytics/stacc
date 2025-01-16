@@ -34,7 +34,7 @@ def get_in_channels(image_path):
 
     return in_channels
 
-def CreateDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, patch_shape, num_workers, batch_size, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
+def StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, patch_shape, num_workers, batch_size, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
     
     train_set = ImageCollectionDatasetJsonLabels(train_images, train_labels, patch_shape, eps=eps, sigma=sigma, 
                                                  lower_bound=lower_bound, upper_bound=upper_bound)
