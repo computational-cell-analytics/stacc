@@ -26,9 +26,17 @@ def main():
     with open(json_dataset) as dataset:
         dict_dataset = json.load(dataset)
 
+        
+
     train_images, train_labels, val_images, val_labels, test_images, test_labels = split_dict_dataset(dict_dataset)
     
+                   patch_shape: tuple, 
+                   num_workers: int, 
     
+    train_loader, val_loader, _ = StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, 
+                                                        patch_shape=patch_shape, num_workers=num_workers, batch_size=batch_size, 
+                                                        sigma=sigma, lower_bound=lower_bound, upper_bound=upper_bound)
+        
     return 
 
 

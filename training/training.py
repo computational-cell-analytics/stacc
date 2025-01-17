@@ -1,62 +1,82 @@
 import torch
-from PIL import ImageFile
-from colony_utils import TrainUNET2D
+import os
+import warnings
+import contextmanager, nullcontext
+import torch_em
+from typing import Optional, Union
 from .utils import StaccDataLoader
-from torch.nn import MSELoss
-from torch_em.model import UNet2d
-from colony_utils.utils import get_in_channels
+from .utils import get_device
+
+
+# TODO is this still necessary?
+from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-# TODO def hier Default Stacc Dataloader
 
+# TODO
+def _check_loader():
+    return
 
-def stacc_training(model_name: str,
-                   train_images: list, 
-                   train_labels: list, 
-                   val_images: list, 
-                   val_labels: list, 
-                   test_images: list, 
-                   test_labels: list,
-                   patch_shape: tuple, 
-                   num_workers: int, 
-                   is_pretrained: bool, 
-                   checkpoint_path, 
-                   batch_size, 
-                   iterations, 
-                   learning_rate=1e-4, 
-                   sigma=None, 
-                   lower_bound=None, 
-                   upper_bound=None
-                   ):
+# TODO Constantin: We want to ignore warning and only print erros, right?
+@contextmanager
+def _filter_warnings(ignore_warnings):
+    if ignore_warnings:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            yield
+    else:
+        with nullcontext():
+            yield
+
+def stacc_training(
+        model_name: str,
+        num_input_channels: int,
+        train_loader: StaccDataLoader,
+        val_loader: StaccDataLoader,
+        epochs: int = 25,
+        device: Optional[Union[str, torch.device]] = None,
+        is_pretrained: Optional[bool] = False, 
+        pretrained_model_path: Optional[Union[str, os.PathLike]] = None, 
+        save_new_model_path: Optional[Union[str, os.PathLike]] = None, # TODO Constantin: Hier None oder sowas wie ./experiments?
+        iterations: Optional[int] = None, 
+        learning_rate: Optional[float] = 1e-4, 
+    ) -> None: # TODO Constantin: -> None macht doch einfach gar nichts, oder?
+    
+    """ Run training for STACC model.
+
+    Args:
+    TODO
+    
     """
+    with _filter_warnings():
 
-    """
-    
+        _check_loader(train_loader)
+        _check_loader(val_loader)
+        
+        model = torch_em.UNet2d(in_channels=num_input_channels, out_channels=1)
+        device = get_device(device)
 
-    # TODO add patch shape // 16 true
-
-    train_loader, val_loader, _ = StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, 
-                                                    patch_shape=patch_shape, num_workers=num_workers, batch_size=batch_size, 
-                                                    sigma=sigma, lower_bound=lower_bound, upper_bound=upper_bound)
-    
-    in_channels = get_in_channels(train_images[0])
-    model = UNet2d(in_channels=in_channels, out_channels=1)
-
-    if is_pretrained:    
-        device = torch.cuda.current_device()
-        model_state = torch.load(checkpoint_path, map_location=torch.device(device))['model_state']
-        model.load_state_dict(model_state) 
-    
-    print(f"Start Training: {model_name}.")
-
-    TrainUNET2D(model_name=model_name,
+        trainer = torch_em.default_segmentation_trainer(
+                name=model_name,
                 model=model,
                 train_loader=train_loader,
                 val_loader=val_loader,
-                loss_function=MSELoss,
+                loss=torch.nn.MSELoss,
+                metric=torch.nn.MSELoss,
                 learning_rate=learning_rate,
-                iterations=iterations,
-                device=torch.device("cuda"),
-                save_root = "./experiments")
-    print(f"Training done.")
+                device=device,
+                mixed_precision=True,
+                log_image_interval=100,
+                save_root = save_new_model_path,
+                compile_model= False,
+                logger=None
+                )
+        
+        if iterations is None:
+            trainer_fit_params = {"epochs": epochs}
+        else:
+            trainer_fit_params = {"iterations": iterations}
+
+        trainer.fit(**trainer_fit_params, load_from_checkpoint=pretrained_model_path)
+
