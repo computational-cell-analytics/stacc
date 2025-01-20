@@ -16,19 +16,19 @@ class TrainingConfig:
 
     Attributes:
         model_name (str): The name of the model.
-        train_dataset (str): Path to the training dataset.
+        train_dataset (str): Path to the training dataset file. Should be a json, containing a dictionary with train, val, and test image and corresponding label paths.
         pretrained_model_path (str): Path to the pretrained model checkpoint.
-        save_new_model_path (str): Path to save the new model.
+        save_new_model_path (str): Path to save the new model checkpoints. By default, latest and best will be stored.
         batch_size (int): Batch size for the data loader.
         patch_shape (Tuple[int, int]): Shape of the patches for training.
         n_workers (int): Number of workers for data loading.
         iterations (int): Number of iterations for training.
         n_epochs (int): Number of epochs for training.
         learning_rate (float): Learning rate for the optimizer.
-        epsilon (float): Epsilon parameter for STACC.
-        sigma (float): Sigma parameter for STACC.
-        lower_bound (float): Lower bound for STACC.
-        upper_bound (float): Upper bound for STACC.
+        epsilon (float): Truncate value for Gaussian stamp in STACC.
+        sigma (float): Sigma parameter for STACC. Determines the size of the Gaussian stamp.
+        lower_bound (float): Lower bound for STACC. Lower bound for Gaussian stamp size.
+        upper_bound (float): Upper bound for STACC. Upper bound for Gaussian stamp size.
         augmentations (List[str]): List of augmentations to apply.
     """
     model_name: str
