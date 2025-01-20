@@ -7,7 +7,6 @@ from typing import Optional, Union
 from .utils import StaccDataLoader
 from .utils import get_device
 
-# TODO is this still necessary?
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -16,9 +15,10 @@ def _check_loaders(train_loader, val_loader):
     x_train, _ = next(iter(train_loader)) # example image train
     x_val, _ = next(iter(val_loader)) # example image val
  
-    n_channels_train = x_train.shape[1] # TODO Interessant, double-check, dachte an 0
-    n_channels_val = x_val.shape[1] # TODO Interessant, double-check, dachte an 0
+    n_channels_train = x_train.shape[1]
+    n_channels_val = x_val.shape[1]
 
+    # grayscale or RGB
     if n_channels_train not in (1, 3) or n_channels_val not in (1, 3):
         raise ValueError(
             "Invalid number of channels for the input data from the data loader."
@@ -34,7 +34,7 @@ def _check_loaders(train_loader, val_loader):
 
     return n_channels_train
 
-# TODO Constantin: We want to ignore warnings and only print erros, right?
+
 @contextmanager
 def _filter_warnings(ignore_warnings):
     if ignore_warnings:
@@ -51,12 +51,11 @@ def stacc_training(
         val_loader: StaccDataLoader,
         n_epochs: int = 25,
         device: Optional[Union[str, torch.device]] = None,
-        is_pretrained: Optional[bool] = False, 
         pretrained_model_path: Optional[Union[str, os.PathLike]] = None, 
-        save_new_model_path: Optional[Union[str, os.PathLike]] = None, # TODO Constantin: Hier None oder sowas wie ./experiments?
+        save_new_model_path: Optional[Union[str, os.PathLike]] = None,
         iterations: Optional[int] = None, 
         learning_rate: Optional[float] = 1e-4, 
-    ) -> None: # TODO Constantin: -> None macht doch einfach gar nichts, oder?
+    ) -> None:
     
     """ Run training for STACC model.
 
@@ -92,6 +91,5 @@ def stacc_training(
         else:
             trainer_fit_params = {"iterations": iterations}
 
-        # TODO Constantin: Discuss load checkpoint schon vorhanden in DefaultTrainer
         trainer.fit(**trainer_fit_params, load_from_checkpoint=pretrained_model_path)
 

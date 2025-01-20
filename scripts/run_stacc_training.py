@@ -32,7 +32,11 @@ def main():
     
                    patch_shape: tuple, 
                    num_workers: int, 
+                   sigma: float=None, 
+                   lower_bound: float=None, 
+                   upper_bound: float=None
     
+                   batch_size: int, 
     train_loader, val_loader, _ = StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, 
                                                         patch_shape=patch_shape, num_workers=num_workers, batch_size=batch_size, 
                                                         sigma=sigma, lower_bound=lower_bound, upper_bound=upper_bound)

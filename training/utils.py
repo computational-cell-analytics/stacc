@@ -34,6 +34,55 @@ def get_in_channels(image_path):
 
     return in_channels
 
+def _get_default_device():
+    """Copied from MicroSAM
+    """
+    # check that we're in CI and use the CPU if we are
+    # otherwise the tests may run out of memory on MAC if MPS is used.
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        return "cpu"
+    # Use cuda enabled gpu if it's available.
+    if torch.cuda.is_available():
+        device = "cuda"
+    # As second priority use mps.
+    # See https://pytorch.org/docs/stable/notes/mps.html for details
+    elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        print("Using apple MPS device.")
+        device = "mps"
+    # Use the CPU as fallback.
+    else:
+        device = "cpu"
+    return device
+
+def get_device(device: Optional[Union[str, torch.device]] = None) -> Union[str, torch.device]:
+    """Copied from MicroSAM: Get the torch device.
+
+    If no device is passed the default device for your system is used.
+    Else it will be checked if the device you have passed is supported.
+
+    Args:
+        device: The input device.
+
+    Returns:
+        The device.
+    """
+    if device is None or device == "auto":
+        device = _get_default_device()
+    else:
+        device_type = device if isinstance(device, str) else device.type
+        if device_type.lower() == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("PyTorch CUDA backend is not available.")
+        elif device_type.lower() == "mps":
+            if not (torch.backends.mps.is_available() and torch.backends.mps.is_built()):
+                raise RuntimeError("PyTorch MPS backend is not available or is not built correctly.")
+        elif device_type.lower() == "cpu":
+            pass  # cpu is always available
+        else:
+            raise RuntimeError(f"Unsupported device: {device}\n"
+                               "Please choose from 'cpu', 'cuda', or 'mps'.")
+    return device
+
 def StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, patch_shape, num_workers, batch_size, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
     
     train_set = ImageCollectionDatasetJsonLabels(train_images, train_labels, patch_shape, eps=eps, sigma=sigma, 
