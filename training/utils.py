@@ -3,7 +3,8 @@ import torch
 import os
 import json
 import argparse
-from .stacc_dataset import StaccImageCollectionDataset
+from .dataset import StaccImageCollectionDataset
+from typing import Optional, Union
 
 
 import numpy as np

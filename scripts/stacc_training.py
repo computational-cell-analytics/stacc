@@ -68,10 +68,8 @@ def main(args):
     Args:
         args (argparse.Namespace): Parsed command-line arguments containing the path to the configuration file.
     """
-    # Load configuration from the specified JSON file
     config = load_config(args.config)
 
-    # Initialize data loaders for training and validation
     train_loader, val_loader, _ = StaccDataLoader(
         config.train_dataset, 
         n_workers=config.n_workers, 
@@ -82,7 +80,6 @@ def main(args):
         upper_bound=config.upper_bound
     )
 
-    # Run the training process
     run_stacc_training(
         config.model_name, 
         train_loader, 
@@ -106,5 +103,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Execute the main function
     main(args)
