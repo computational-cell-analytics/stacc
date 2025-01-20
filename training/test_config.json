@@ -1,0 +1,19 @@
+{
+    "model_name": "test_stacc",
+    "train_dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar_and_sartorius.json",
+    "test_dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar.json",
+    "pretrained_model_path": "/scratch-emmy/usr/nimjjere/models/checkpoints/stacc_10_30/best.pt",
+    "save_new_model_path": "/scratch-emmy/usr/nimjjere/models",
+    "batch_size": 2,
+    "patch_shape": [2928, 2928],
+    "n_workers": 6,
+    "iterations": 100,
+    "n_epochs": null,
+    "learning_rate": 1e-4,
+    "epsilon": 0.00001,
+    "sigma": null,
+    "lower_bound": null,
+    "upper_bound": null,
+    "augmentations": null,
+    "comment": ""
+}

@@ -3,6 +3,8 @@ import torch
 import os
 import json
 import argparse
+from .stacc_dataset import StaccImageCollectionDataset
+
 
 import numpy as np
 import imageio.v3 as iio
@@ -17,22 +19,6 @@ from colony_utils import json_transform_to_matrix
 from colony_utils import ImageCollectionDatasetJsonLabels
 from torch.utils.data import DataLoader
 
-def get_in_channels(image_path):
-    # Load the first image to determine the number of channels
-    image = np.asarray(imread(image_path))
-
-    # Check if the first image is grayscale or RGB
-    if len(image.shape) == 2:
-        in_channels = 1
-        # print(f"About to process grayscale images")
-    elif image.shape[-1] == 4:
-        in_channels = 3
-        # print(f"About to process RGB images")
-    else:
-        in_channels = image.shape[-1]
-        # print(f"About to process images of dimensions = {image.shape}")
-
-    return in_channels
 
 def _get_default_device():
     """Copied from MicroSAM
@@ -54,8 +40,8 @@ def _get_default_device():
         device = "cpu"
     return device
 
-def get_device(device: Optional[Union[str, torch.device]] = None) -> Union[str, torch.device]:
-    """Copied from MicroSAM: Get the torch device.
+def _get_device(device: Optional[Union[str, torch.device]] = None) -> Union[str, torch.device]:
+    """Copied from and modidied based on MicroSAM: Get the torch device.
 
     If no device is passed the default device for your system is used.
     Else it will be checked if the device you have passed is supported.
@@ -83,13 +69,50 @@ def get_device(device: Optional[Union[str, torch.device]] = None) -> Union[str, 
                                "Please choose from 'cpu', 'cuda', or 'mps'.")
     return device
 
-def StaccDataLoader(train_images, train_labels, val_images, val_labels, test_images, test_labels, patch_shape, num_workers, batch_size, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
+
+
+def get_in_channels(image_path):
+    # Load the first image to determine the number of channels
+    image = np.asarray(imread(image_path))
+
+    # Check if the first image is grayscale or RGB
+    if len(image.shape) == 2:
+        in_channels = 1
+        # print(f"About to process grayscale images")
+    elif image.shape[-1] == 4:
+        in_channels = 3
+        # print(f"About to process RGB images")
+    else:
+        in_channels = image.shape[-1]
+        # print(f"About to process images of dimensions = {image.shape}")
+
+    return in_channels
+
+
+def _split_data_paths_into_training_dataset(dataset_file):
+    with open(dataset_file) as dataset:
+        dict_dataset = json.load(dataset)
+
+    train_images = dict_dataset['train']['images']
+    train_labels = dict_dataset['train']['labels']
+
+    val_images = dict_dataset['val']['images']
+    val_labels = dict_dataset['val']['labels']
+
+    test_images = dict_dataset['test']['images']
+    test_labels = dict_dataset['test']['labels']
+
+    return train_images, train_labels, val_images, val_labels, test_images, test_labels
+
+def StaccDataLoader(train_dataset_file, patch_shape, num_workers, batch_size, eps=None, sigma=None, lower_bound=None, upper_bound=None):
     
-    train_set = ImageCollectionDatasetJsonLabels(train_images, train_labels, patch_shape, eps=eps, sigma=sigma, 
+    train_images, train_labels, val_images, val_labels, test_images, test_labels = _split_data_paths_into_training_dataset(train_dataset_file)
+
+    train_set = StaccImageCollectionDataset(train_images, train_labels, patch_shape, eps=eps, sigma=sigma, 
                                                  lower_bound=lower_bound, upper_bound=upper_bound)
-    val_set = ImageCollectionDatasetJsonLabels(val_images, val_labels, patch_shape, eps=eps, sigma=sigma, 
+    val_set = StaccImageCollectionDataset(val_images, val_labels, patch_shape, eps=eps, sigma=sigma, 
                                                lower_bound=lower_bound, upper_bound=upper_bound)
-    test_set = ImageCollectionDatasetJsonLabels(test_images, test_labels, patch_shape, eps=eps, sigma=sigma, 
+    test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma, 
                                                 lower_bound=lower_bound, upper_bound=upper_bound)
 
     train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, 
@@ -106,18 +129,6 @@ def StaccDataLoader(train_images, train_labels, val_images, val_labels, test_ima
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def split_dict_dataset(dict_dataset):
-    # lists of images/labels
-    train_images = dict_dataset['train']['images']
-    train_labels = dict_dataset['train']['labels']
-
-    val_images = dict_dataset['val']['images']
-    val_labels = dict_dataset['val']['labels']
-
-    test_images = dict_dataset['test']['images']
-    test_labels = dict_dataset['test']['labels']
-
-    return train_images, train_labels, val_images, val_labels, test_images, test_labels
 
 def get_center_coordinates(json_path):
     # Read the JSON file
