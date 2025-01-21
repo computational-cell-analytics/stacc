@@ -1,204 +1,184 @@
-
-
-
-"""
-TODO whole file Tuedsday!
-"""
-
-
-
-
-
-
-
-
-
-
-import numpy as np
 import torch
-from os.path import basename
 import json
 import os
+import numpy as np
 from skimage.io import imread
 from skimage.filters import gaussian
 from torch_em.util import (ensure_spatial_array, ensure_tensor_with_channels, load_image, supports_memmap)
-from skimage.transform import resize
 
-def apply_stamp_without_rand_and_bridges(stamp, position, label_matrix, image):
-    """Adds a stamp (small matrix) at the coordinates 'position' of the label_matrix. """
-    w_stamp, _ = stamp.shape # stamp has square shape, w_stamp is odd
-    # print(f"width stamp: {w_stamp}")
-    if w_stamp != _:
-        print(f"Warning: stamp is not squared."
-        f"Shape = {w_stamp} x {_} at coordinate {position}.")
+def _get_image_id(image_path):
+    """
+    Extracts the image ID from the given image path by removing the file extension.
+    
+    This function checks if the image is in JPG or TIF format. If not, it raises a ValueError.
+    
+    Parameters:
+    image_path (str): The file path of the image.
+    
+    Returns:
+    str: The image ID, which is the basename of the image path without its extension.
+    
+    Raises:
+    ValueError: If the image is not a JPG or TIF file.
+    """
+    # Get the file extension
+    _, file_extension = os.path.splitext(image_path)
+    
+    # Check if the file is a JPG or TIF image
+    if file_extension.lower() not in ['.jpg', '.jpeg', '.tif', '.tiff']:
+        raise ValueError("The image must be a JPG or TIF file.")
+    
+    # Get the basename without the extension
+    image_id = os.path.splitext(os.path.basename(image_path))[0]
+    
+    return image_id
+
+def apply_stamp_to_stacc_gt_label(stamp, position, label_matrix, image_id):
+    """
+    Adds a stamp (small matrix) at the coordinates 'position' of the label_matrix.
+    The stamp is added to the label_matrix, using the maximum value if the label_matrix
+    already has a non-zero value at that position.
+    
+    Parameters:
+    stamp (np.ndarray): The stamp matrix to be applied.
+    position (tuple): The (x, y) coordinates where the center of the stamp should be placed.
+    label_matrix (np.ndarray): The stacc ground truth label matrix to which the stamp is applied.
+    image_id (str): The image identifier for error reporting.
+    """
+    w_stamp, _ = stamp.shape  # stamp has square shape, w_stamp is odd
     x, y = position
+    h = w_stamp // 2
+    lx, ly = label_matrix.shape
+
+    # Calculate the bounds for the stamp application
+    x_start = max(x - h, 0)
+    x_end = min(x + h + 1, lx)
+    y_start = max(y - h, 0)
+    y_end = min(y + h + 1, ly)
+
+    # Calculate the bounds for the stamp itself
+    stamp_x_start = max(h - x, 0)
+    stamp_x_end = w_stamp - max(x + h + 1 - lx, 0)
+    stamp_y_start = max(h - y, 0)
+    stamp_y_end = w_stamp - max(y + h + 1 - ly, 0)
+
     try:
-        h = w_stamp // 2
-        lx, ly = label_matrix.shape
-        if y+h+1 > ly or y-h < 0 or x+h+1 > lx or x-h < 0:
-            # rechts
-            if y+h+1 > ly:
-                # rechts und unten
-                if x+h+1 > lx:
-                    # print("rechts und unten abgeschnitten")
-                    a = label_matrix[x-h:lx, y-h:ly]
-                    label_matrix[x-h:lx, y-h:ly] = np.maximum(a, stamp[:-abs((x+h+1) - lx), :-abs((y+h+1) - ly)])
-                    return
-                # rechts und oben
-                elif x-h < 0:
-                    # print("rechts und oben abgeschnitten")
-                    a = label_matrix[0:x+h+1, y-h:ly]
-                    label_matrix[0:x+h+1, y-h:ly] = np.maximum(a, stamp[abs(x-h):, :-abs((y+h+1) - ly)])
-                    return
-                else:
-                    # print("rechts und mittig abgeschnitten")
-                    a = label_matrix[x-h:x+h+1, y-h:ly]
-                    label_matrix[x-h:x+h+1, y-h:ly] = np.maximum(a, stamp[:, :-abs((y+h+1) - ly)])
-                    return
-
-            # links
-            if y-h < 0:
-                # links und unten
-                if x+h+1 > lx:
-                    # print("links und unten abgeschnitten")
-                    a = label_matrix[x-h:lx, 0:y+h+1]
-                    label_matrix[x-h:lx, 0:y+h+1] = np.maximum(a, stamp[:-abs((x+h+1) - lx), abs(y-h):])
-                    return
-                # links und oben
-                elif x-h < 0:
-                    # print("links und oben abgeschnitten")
-                    a = label_matrix[0:x+h+1, 0:y+h+1]
-                    label_matrix[0:x+h+1, 0:y+h+1] = np.maximum(a, stamp[abs(x-h):, abs(y-h):])
-                    return
-                # links und mittig
-                else:
-                    # print("links und mittig abgeschnitten")
-                    a = label_matrix[x-h:x+h+1, 0:y+h+1]
-                    label_matrix[x-h:x+h+1, 0:y+h+1] = np.maximum(a, stamp[:, abs(y-h):])
-                    return
-
-            # nur oben
-            if x-h < 0:
-                # print("mittig und oben abgeschnitten")
-                a = label_matrix[0:x+h+1, y-h:y+h+1]
-                label_matrix[0:x+h+1, y-h:y+h+1] = np.maximum(a, stamp[abs(x-h):,:])
-                return
-
-            # nur unten
-            if x+h+1 > lx:
-                # print("mittig und unten abgeschnitten")
-                a = label_matrix[x-h:lx, y-h:y+h+1]
-                label_matrix[x-h:lx, y-h:y+h+1] = np.maximum(a, stamp[:-abs(x+h+1 - lx),:])
-                return
-        else:
-            # print("nichts abgeschnitten")
-            a = label_matrix[x-h:x+h+1, y-h:y+h+1]
-            label_matrix[x-h:x+h+1, y-h:y+h+1] = np.maximum(a, stamp)
-            return  
+        # Apply the stamp to the label matrix
+        a = label_matrix[x_start:x_end, y_start:y_end]
+        label_matrix[x_start:x_end, y_start:y_end] = np.maximum(a, stamp[stamp_x_start:stamp_x_end, stamp_y_start:stamp_y_end])
     except Exception as e:
-        print(f"doch irgendwas schief gegangen in image {image}")
+        print(f"An error occurred in image {image_id}.")
         print(f"Warning: Corresponding error message: {e}.")
+
     return
 
-def width_to_sigma(width, eps, lower_bound, upper_bound):
-    # shrink needs to be between 0 and 1
-    sigma = np.sqrt(-(width**2) / (2*np.log(eps)))
-    #### bounding ####
+def width_to_sigma(width, lower_bound, upper_bound, eps=0.00001):
+    """
+    Converts a given width to a Gaussian sigma value used for the stamp, ensuring it is within specified bounds.
+
+    Parameters:
+    width (int): The width of the Gaussian stamp, this is what we translate to a sigma value.
+    lower_bound (float): The minimum allowable value for sigma.
+    upper_bound (float): The maximum allowable value for sigma.
+    eps (float, optional): A small epsilon value used in the logarithmic calculation for trucating. Default is 0.00001.
+
+    Returns:
+    float: The calculated sigma value, bounded by lower_bound and upper_bound.
+    """
+    print(f"width to sigma= {eps}")
+    sigma = np.sqrt(-(width**2) / (2 * np.log(eps)))
+
+    # Ensure sigma is within the specified bounds
     if lower_bound and upper_bound:
         if sigma < lower_bound:
             sigma = lower_bound
         elif sigma > upper_bound:
             sigma = upper_bound
-    # print(sigma)
-    return int(sigma)
 
-class JuliasException(Exception):
-    def __init__(self, message):
-        self.message = message
+    return sigma
 
-    def __str__(self):
-        return repr(self.message)
 
-def create_gaussian_stamp(width, eps, lower_bound, upper_bound):
+def create_gaussian_stamp(width, lower_bound, upper_bound, eps=0.00001):
     """
-    Creates a Gaussian stamp (matrix) with size width x width.
-    If width is even, set width = width - 1.
+    Creates a round Gaussian stamp (matrix) with size width x width.
+
+    Parameters:
+    width (int): The width of the Gaussian stamp.
+    lower_bound (float): The minimum allowable value for sigma.
+    upper_bound (float): The maximum allowable value for sigma.
+    eps (float, optional): A small epsilon value used for Gaussian truncation. Default is 0.00001.
+
+    Returns:
+    np.ndarray: A 2D array representing the Gaussian stamp.
     """
-    if width % 2 == 0:
-        width = width - 1
-    
-    sigma = width_to_sigma(width, eps, lower_bound, upper_bound)
-    # put gaussian onto stamp
-    #i, j = np.meshgrid(np.arange(-width//2+1, width//2+1), np.arange(-width//2+1, width//2+1))
-    #stamp = np.exp(- (i**2 + j**2) / (2*sigma**2))
+    print(f"create gaussian stamp: {eps}")
+    sigma = width_to_sigma(width, lower_bound, upper_bound, eps)
 
     stamp = np.zeros((width, width))
-    stamp[width//2, width//2] = 1
+    stamp[width // 2, width // 2] = 1
     stamp = gaussian(stamp, sigma=sigma, truncate=10.0, mode='constant')
-    # truncate s.t. stamp becomes circle:
-    stamp[np.where(stamp < eps)] = 0
-    # normalize s.t. center pixel = 1:
-    #stamp = stamp / stamp[width//2, width//2]
-    # alternatively, multiply 
-    # eigentlich 2 * pi und so, aber ich mache 8, damit alles mal 4 genommen wird, sodass wir bei einem ähnlichen max wie damals rauskommen
-    stamp = stamp * 8 * np.pi * sigma**2
-    # print(f"Stamp Maximum: {stamp.max()}")
+    stamp[np.where(stamp < eps)] = 0  # Truncate to make the stamp circular
+    stamp = stamp * 2 * 4 * np.pi * sigma**2
+
     return stamp
 
-def resize_image(image):
-    # hardgecoded, Erklärung siehe oben
-    width = 2928
-    resized = resize(image, (width, width))
-    return resized
 
-# create label matrix
-def json_transform_to_matrix(json_label, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
-    with open(json_label) as label:
-        label_dict = json.load(label)
-        colonies = len(label_dict['labels'])
+def create_stacc_ground_truth_label_from_json(image_path, label_path, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
+    """
+    Creates a ground truth label matrix from JSON bounding box annotations.
+
+    Parameters:
+    image_path (str): Path to the input image.
+    label_path (str): Path to the corresponding JSON file containing bounding box labels.
+    eps (float, optional): Epsilon value for Gaussian truncation. Default is 0.00001.
+    sigma (float, optional): Sigma value for Gaussian blur. If None, individual stamps are applied.
+    lower_bound (float, optional): Lower bound for Gaussian sigma. If None, no lower bound for sigma will be set.
+    upper_bound (float, optional): Upper bound for Gaussian sigma If None, no upper bound for sigma will be set.
+
+    Returns:
+    np.ndarray: A 2D array representing the stacc ground truth label matrix.
+    """
+    print(f"second: {eps}")
+    with open(label_path) as file:
+        label_dict = json.load(file)
+
+    bboxes = label_dict['labels']
+    n_colonies = len(bboxes)  # Number of annotations / bounding boxes
     
-    number = basename(json_label)[:-5]
-
-    # Check for both .jpg and .tif files
-    image_path_jpg = json_label[:-5] + '.jpg'
-    image_path_tif = json_label[:-5] + '.tif'
-
-    if os.path.exists(image_path_jpg):
-        image_path = image_path_jpg
-    elif os.path.exists(image_path_tif):
-        image_path = image_path_tif
-    else:
-        raise FileNotFoundError(f"Neither .jpg nor .tif image file found for {number}.")
-
+    image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
     im = imread(image_path)
-    rows = im.shape[0]
-    columns = im.shape[1]
 
-    labels = np.zeros((rows, columns))
-    if colonies > 0:
-        reasonable_indicies = [i for i in range(colonies) if (label_dict['labels'][i]['x'] + max(int(label_dict['labels'][i]['width']/2), 1)) < columns and (label_dict['labels'][i]['y'] + max(int(label_dict['labels'][i]['height']/2), 1)) < rows]
-        if sigma: 
-            x_coordinates = np.array([(int(label_dict['labels'][i]['x']) + max(int(label_dict['labels'][i]['width']/2), 1)) for i in reasonable_indicies], dtype='int')
-            y_coordinates = np.array([(int(label_dict['labels'][i]['y']) + max(int(label_dict['labels'][i]['height']/2), 1)) for i in reasonable_indicies], dtype='int')
-            labels[y_coordinates, x_coordinates] = 1
-            labels = gaussian(labels, sigma=sigma, mode="constant")
-            labels[np.where(labels < eps)] = 0
-            labels = labels * 2 * 4 * np.pi * sigma**2 # *4 to normalize maxima to 4, as suggested by follow up paper of zisserman. *10 to get to 10, etc.
-            return labels
+    n_rows, n_columns = im.shape[:2]
+
+    stacc_gt_label = np.zeros((n_rows, n_columns))  # Create empty ground truth label
+    if n_colonies > 0:
+        # Only keep the stacc_gt_label that are inside the image dimensions
+        reasonable_indices = [i for i in range(n_colonies) if (bboxes[i]['x'] + max(int(bboxes[i]['width']/2), 1)) <= n_columns and (bboxes[i]['y'] + max(int(bboxes[i]['height']/2), 1)) <= n_rows]
+        x_coordinates = np.array([(int(bboxes[i]['y']) + max(int(bboxes[i]['width']/2), 1)) for i in reasonable_indices], dtype='int') # Swap y and x because of difference coordinate systems
+        y_coordinates = np.array([(int(bboxes[i]['x']) + max(int(bboxes[i]['height']/2), 1)) for i in reasonable_indices], dtype='int')
+
+        if sigma:
+            # Process all coordinates at once
+            stacc_gt_label[x_coordinates, y_coordinates] = 1
+            stacc_gt_label = gaussian(stacc_gt_label, sigma=sigma, mode="constant")
+            stacc_gt_label[np.where(stacc_gt_label < eps)] = 0
+            stacc_gt_label = stacc_gt_label * 2 * 4 * np.pi * sigma**2
         else:
-            for i in reasonable_indicies:
-                width = max(int(label_dict['labels'][i]['width']), 1)
-                height = max(int(label_dict['labels'][i]['height']), 1)
-                x_coord = int(label_dict['labels'][i]['x']) + width // 2
-                y_coord = int(label_dict['labels'][i]['y']) + height // 2
-                coords = (y_coord, x_coord)
-
-                width = min(width, height)
-                stamp = create_gaussian_stamp(width, eps, lower_bound, upper_bound)
-                apply_stamp_without_rand_and_bridges(stamp, position=coords, label_matrix=labels, image=image_path)
-            return labels
+            # Process each coordinate individually
+            for i, (x_coord, y_coord) in enumerate(zip(x_coordinates, y_coordinates)):
+                width = max(int(bboxes[reasonable_indices[i]]['width']), 1)
+                height = max(int(bboxes[reasonable_indices[i]]['height']), 1)
+                width = min(width, height)  # Make the stamp square
+                if width % 2 == 0:
+                    width -= 1
+                print(f"right before create gaussian: {eps}")
+                stamp = create_gaussian_stamp(width, lower_bound, upper_bound, eps)
+                coords = (x_coord, y_coord)
+                apply_stamp_to_stacc_gt_label(stamp, position=coords, label_matrix=stacc_gt_label, image_id=image_id)
+        
+        return stacc_gt_label
     else:
-        return labels
+        return stacc_gt_label
 
 class StaccImageCollectionDataset(torch.utils.data.Dataset):
     max_sampling_attempts = 500
@@ -207,12 +187,8 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         if len(raw_images) != len(label_images):
             raise ValueError(f"Expect same number of raw and label images, got {len(raw_images)} and {len(label_images)}")
 
-        # is_multichan = None
+        # raw_im and label_im are paths to the images. 
         for raw_im, label_im in zip(raw_images, label_images):
-            # if basename(raw_im)[:-4] != basename(label_im)[:-4]:
-            #     raise ValueError(f"Expect matching raw and label images, got {len(raw_images)} and {len(label_images)}")
-            # we only check for compatible shapes if both images support memmap, because
-            # we don't want to load everything into ram
             if supports_memmap(raw_im) and supports_memmap(label_im):
                 shape = load_image(raw_im).shape
                 assert len(shape) in (2, 3)
@@ -233,8 +209,7 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
                     else:
                         shape = shape[1:]
 
-                label = json_transform_to_matrix(label_im)
-                # load_image(label_im).shape CHANGED
+                label = create_stacc_ground_truth_label_from_json(raw_im, label_im)
                 label_shape = label.shape
                 if shape != label_shape:
                     msg = f"Expect raw and labels of same shape, got {shape}, {label_shape} for {raw_im}, {label_im}"
@@ -315,7 +290,7 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         # print(f"Raw path: {raw}, label path: {label}")
 
         raw = load_image(raw)
-        label = json_transform_to_matrix(json_label=label, eps=self.eps, sigma=self.sigma, lower_bound=self.lower_bound, upper_bound=self.upper_bound)
+        label = create_stacc_ground_truth_label_from_json(raw, label, eps=self.eps, sigma=self.sigma, lower_bound=self.lower_bound, upper_bound=self.upper_bound)
         
         # print(f"type of raw: {type(raw)}, type of label: {type(label)}")
 
