@@ -1,5 +1,5 @@
 {
-    "model_name": "test_stacc",
+    "model_name": "test_stacc_for_repo",
     "train_dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar_and_sartorius.json",
     "test_dataset": "/user/jeremias7/u12092/work/colony-counting/unet/data_paths/agar.json",
     "pretrained_model_path": "/scratch-emmy/usr/nimjjere/models/checkpoints/stacc_10_30/best.pt",

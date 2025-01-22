@@ -4,7 +4,9 @@ import warnings
 import torch_em
 from contextlib import contextmanager, nullcontext
 from typing import Optional, Union
-from .utils import StaccDataLoader, get_device
+
+# stacc package imports
+from training import StaccDataLoader, get_device
 
 def _check_loaders(train_loader, val_loader):
     """
