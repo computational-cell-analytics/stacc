@@ -2,9 +2,9 @@ import argparse
 from PIL import ImageFile
 
 # stacc package imports
-from stacc.training import StaccDataLoader
-from stacc.training import run_stacc_training
-from stacc.training import load_config
+from stacc import StaccDataLoader
+from stacc import load_config
+from stacc import run_stacc_training
 
 # Allow loading of truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -21,6 +21,7 @@ def main(args):
     train_loader, val_loader, _ = StaccDataLoader(
         config.train_dataset, 
         n_workers=config.n_workers, 
+        eps=config.epsilon,
         batch_size=config.batch_size, 
         patch_shape=config.patch_shape,
         sigma=config.sigma, 
@@ -32,11 +33,11 @@ def main(args):
         config.model_name, 
         train_loader, 
         val_loader, 
-        config.n_epochs, 
         config.learning_rate, 
-        device="gpu", 
+        device="cuda", 
         pretrained_model_path=config.pretrained_model_path, 
-        save_new_model_path=config.save_new_model_path
+        save_new_model_path=config.save_new_model_path,
+        iterations=config.iterations
     )
 
 if __name__ == "__main__":

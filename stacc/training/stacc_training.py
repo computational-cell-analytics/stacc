@@ -1,12 +1,15 @@
 import torch
+import json
 import os
 import warnings
 import torch_em
+from torch_em.model import UNet2d
 from contextlib import contextmanager, nullcontext
 from typing import Optional, Union
 
 # stacc package imports
-from training import StaccDataLoader, get_device
+from stacc import get_device, StaccDataLoader
+
 
 def _check_loaders(train_loader, val_loader):
     """
@@ -110,10 +113,11 @@ def run_stacc_training(
     Returns:
         None
     """
+
     with _filter_warnings(ignore_warnings=True):
         n_input_channels = _check_loaders(train_loader, val_loader)
         
-        model = torch_em.UNet2d(in_channels=n_input_channels, out_channels=1)
+        model = UNet2d(in_channels=n_input_channels, out_channels=1)
         device = get_device(device)
 
         trainer = torch_em.default_segmentation_trainer(
@@ -121,8 +125,8 @@ def run_stacc_training(
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            loss=torch.nn.MSELoss,
-            metric=torch.nn.MSELoss,
+            loss=torch.nn.MSELoss(),
+            metric=torch.nn.MSELoss(),
             learning_rate=learning_rate,
             device=device,
             mixed_precision=True,
