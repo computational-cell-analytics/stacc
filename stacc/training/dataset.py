@@ -1,51 +1,57 @@
-import torch
 import json
 import os
+from typing import Optional, Tuple
+
 import numpy as np
+import torch
+
 from skimage.io import imread
 from skimage.filters import gaussian
-from torch_em.util import (ensure_spatial_array, ensure_tensor_with_channels, load_image, supports_memmap)
+from torch_em.util import ensure_spatial_array, ensure_tensor_with_channels, load_image, supports_memmap
 from torch.utils.data import DataLoader
 
 
-def _get_image_id(image_path):
-    """
-    Extracts the image ID from the given image path by removing the file extension.
-    
+def _get_image_id(image_path: str) -> str:
+    """Extract the image ID from the given image path by removing the file extension.
+
     This function checks if the image is in JPG or TIF format. If not, it raises a ValueError.
-    
-    Parameters:
-    image_path (str): The file path of the image.
-    
+
+    Args:
+        image_path: The file path of the image.
+
     Returns:
-    str: The image ID, which is the basename of the image path without its extension.
-    
+        The image ID, which is the basename of the image path without its extension.
+
     Raises:
-    ValueError: If the image is not a JPG or TIF file.
+        ValueError: If the image is not a JPG or TIF file.
     """
     # Get the file extension
     _, file_extension = os.path.splitext(image_path)
-    
-    # Check if the file is a JPG or TIF image
-    if file_extension.lower() not in ['.jpg', '.jpeg', '.tif', '.tiff']:
-        raise ValueError("The image must be a JPG or TIF file.")
-    
-    # Get the basename without the extension
-    image_id = os.path.splitext(os.path.basename(image_path))[0]
-    
-    return image_id
 
-def apply_stamp_to_stacc_gt_label(stamp, position, label_matrix, image_id):
-    """
-    Adds a stamp (small matrix) at the coordinates 'position' of the label_matrix.
-    The stamp is added to the label_matrix, using the maximum value if the label_matrix
+    # Check if the file is a JPG or TIF image
+    if file_extension.lower() not in [".jpg", ".jpeg", ".tif", ".tiff"]:
+        raise ValueError("The image must be a JPG or TIF file.")
+
+    # Get the basename without the extension
+    return os.path.splitext(os.path.basename(image_path))[0]
+
+
+def apply_stamp_to_stacc_gt_label(
+    stamp: np.ndarray,
+    position: Tuple[int, int],
+    label_matrix: np.ndarray,
+    image_id: str
+) -> None:
+    """Add a stamp (small matrix) at the coordinates 'position' of the label_matrix.
+
+    The stamp is added to the label_matrix in-place, using the maximum value if the label_matrix
     already has a non-zero value at that position.
-    
-    Parameters:
-    stamp (np.ndarray): The stamp matrix to be applied.
-    position (tuple): The (x, y) coordinates where the center of the stamp should be placed.
-    label_matrix (np.ndarray): The stacc ground truth label matrix to which the stamp is applied.
-    image_id (str): The image identifier for error reporting.
+
+    Args:
+        stamp: The stamp matrix to be applied.
+        position: The (x, y) coordinates where the center of the stamp should be placed.
+        label_matrix: The stacc ground truth label matrix to which the stamp is applied.
+        image_id: The image identifier for error reporting.
     """
     w_stamp, _ = stamp.shape  # stamp has square shape, w_stamp is odd
     x, y = position
@@ -67,25 +73,25 @@ def apply_stamp_to_stacc_gt_label(stamp, position, label_matrix, image_id):
     try:
         # Apply the stamp to the label matrix
         a = label_matrix[x_start:x_end, y_start:y_end]
-        label_matrix[x_start:x_end, y_start:y_end] = np.maximum(a, stamp[stamp_x_start:stamp_x_end, stamp_y_start:stamp_y_end])
+        label_matrix[x_start:x_end, y_start:y_end] = np.maximum(
+            a, stamp[stamp_x_start:stamp_x_end, stamp_y_start:stamp_y_end]
+        )
     except Exception as e:
         print(f"An error occurred in image {image_id}.")
         print(f"Warning: Corresponding error message: {e}.")
 
-    return
 
-def width_to_sigma(width, lower_bound, upper_bound, eps=0.00001):
-    """
-    Converts a given width to a Gaussian sigma value used for the stamp, ensuring it is within specified bounds.
+def width_to_sigma(width: int, lower_bound: float, upper_bound: float, eps: float = 0.00001) -> float:
+    """Convert a given width to a Gaussian sigma value used for the stamp, ensuring it is within specified bounds.
 
-    Parameters:
-    width (int): The width of the Gaussian stamp, this is what we translate to a sigma value.
-    lower_bound (float): The minimum allowable value for sigma.
-    upper_bound (float): The maximum allowable value for sigma.
-    eps (float, optional): A small epsilon value used in the logarithmic calculation for trucating. Default is 0.00001.
+    Args:
+        width: The width of the Gaussian stamp, this is what we translate to a sigma value.
+        lower_bound: The minimum allowable value for sigma.
+        upper_bound: The maximum allowable value for sigma.
+        eps: A small epsilon value used in the logarithmic calculation for truncating.
 
     Returns:
-    float: The calculated sigma value, bounded by lower_bound and upper_bound.
+        The calculated sigma value, bounded by lower_bound and upper_bound.
     """
     sigma = np.sqrt(-(width**2) / (2 * np.log(eps)))
 
@@ -99,18 +105,17 @@ def width_to_sigma(width, lower_bound, upper_bound, eps=0.00001):
     return sigma
 
 
-def create_gaussian_stamp(width, lower_bound, upper_bound, eps=0.00001):
-    """
-    Creates a round Gaussian stamp (matrix) with size width x width.
+def create_gaussian_stamp(width: int, lower_bound: float, upper_bound: float, eps: float = 0.00001) -> np.ndarray:
+    """Create a round Gaussian stamp (matrix) with size width x width.
 
-    Parameters:
-    width (int): The width of the Gaussian stamp.
-    lower_bound (float): The minimum allowable value for sigma.
-    upper_bound (float): The maximum allowable value for sigma.
-    eps (float, optional): A small epsilon value used for Gaussian truncation. Default is 0.00001.
+    Args:
+        width: The width of the Gaussian stamp.
+        lower_bound: The minimum allowable value for sigma.
+        upper_bound: The maximum allowable value for sigma.
+        eps: A small epsilon value used for Gaussian truncation. Default is 0.00001.
 
     Returns:
-    np.ndarray: A 2D array representing the Gaussian stamp.
+        A 2D array representing the Gaussian stamp.
     """
     sigma = width_to_sigma(width, lower_bound, upper_bound, eps)
 
@@ -123,27 +128,33 @@ def create_gaussian_stamp(width, lower_bound, upper_bound, eps=0.00001):
     return stamp
 
 
-def create_stacc_ground_truth_label_from_json(image_path, label_path, eps=0.00001, sigma=None, lower_bound=None, upper_bound=None):
-    """
-    Creates a ground truth label matrix from JSON bounding box annotations.
+def create_stacc_ground_truth_label_from_json(
+    image_path: str,
+    label_path: str,
+    eps: float = 0.00001,
+    sigma: Optional[float] = None,
+    lower_bound: Optional[float] = None,
+    upper_bound: Optional[float] = None,
+):
+    """Create a ground truth label matrix from JSON bounding box annotations.
 
-    Parameters:
-    image_path (str): Path to the input image.
-    label_path (str): Path to the corresponding JSON file containing bounding box labels.
-    eps (float, optional): Epsilon value for Gaussian truncation. Default is 0.00001.
-    sigma (float, optional): Sigma value for Gaussian blur. If None, individual stamps are applied.
-    lower_bound (float, optional): Lower bound for Gaussian sigma. If None, no lower bound for sigma will be set.
-    upper_bound (float, optional): Upper bound for Gaussian sigma If None, no upper bound for sigma will be set.
+    Args:
+        image_path: Path to the input image.
+        label_path: Path to the corresponding JSON file containing bounding box labels.
+        eps: Epsilon value for Gaussian truncation. Default is 0.00001.
+        sigma: Sigma value for Gaussian blur. If None, individual stamps are applied.
+        lower_bound: Lower bound for Gaussian sigma. If None, no lower bound for sigma will be set.
+        upper_bound: Upper bound for Gaussian sigma If None, no upper bound for sigma will be set.
 
     Returns:
-    np.ndarray: A 2D array representing the stacc ground truth label matrix.
+        A 2D array representing the stacc ground truth label matrix.
     """
     with open(label_path) as file:
         label_dict = json.load(file)
 
-    bboxes = label_dict['labels']
+    bboxes = label_dict["labels"]
     n_colonies = len(bboxes)  # Number of annotations / bounding boxes
-    
+
     image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
     im = imread(image_path)
 
@@ -152,9 +163,17 @@ def create_stacc_ground_truth_label_from_json(image_path, label_path, eps=0.0000
     stacc_gt_label = np.zeros((n_rows, n_columns))  # Create empty ground truth label
     if n_colonies > 0:
         # Only keep the stacc_gt_label that are inside the image dimensions
-        reasonable_indices = [i for i in range(n_colonies) if (bboxes[i]['x'] + max(int(bboxes[i]['width']/2), 1)) <= n_columns and (bboxes[i]['y'] + max(int(bboxes[i]['height']/2), 1)) <= n_rows]
-        x_coordinates = np.array([(int(bboxes[i]['y']) + max(int(bboxes[i]['width']/2), 1)) for i in reasonable_indices], dtype='int') # Swap y and x because of difference coordinate systems
-        y_coordinates = np.array([(int(bboxes[i]['x']) + max(int(bboxes[i]['height']/2), 1)) for i in reasonable_indices], dtype='int')
+        reasonable_indices = [
+            i for i in range(n_colonies) if
+            (bboxes[i]["x"] + max(int(bboxes[i]["width"]/2), 1)) <= n_columns and
+            (bboxes[i]["y"] + max(int(bboxes[i]["height"]/2), 1)) <= n_rows
+        ]
+        x_coordinates = np.array(
+            [(int(bboxes[i]["y"]) + max(int(bboxes[i]["width"]/2), 1)) for i in reasonable_indices], dtype="int"
+        )
+        y_coordinates = np.array(
+            [(int(bboxes[i]["x"]) + max(int(bboxes[i]["height"]/2), 1)) for i in reasonable_indices], dtype="int"
+        )
 
         if sigma:
             # Process all coordinates at once
@@ -173,30 +192,30 @@ def create_stacc_ground_truth_label_from_json(image_path, label_path, eps=0.0000
                 stamp = create_gaussian_stamp(width, lower_bound, upper_bound, eps)
                 coords = (x_coord, y_coord)
                 apply_stamp_to_stacc_gt_label(stamp, position=coords, label_matrix=stacc_gt_label, image_id=image_id)
-        
+
         return stacc_gt_label
     else:
         return stacc_gt_label
 
+
 class StaccImageCollectionDataset(torch.utils.data.Dataset):
+    """@private
+    """
     max_sampling_attempts = 500
-    
+
     def _check_inputs(self, raw_images, label_images):
         if len(raw_images) != len(label_images):
-            raise ValueError(f"Expect same number of raw and label images, got {len(raw_images)} and {len(label_images)}")
+            raise ValueError(
+                f"Expect same number of raw and label images, got {len(raw_images)} and {len(label_images)}"
+            )
 
-        # raw_im and label_im are paths to the images. 
+        # raw_im and label_im are paths to the images.
         for raw_im, label_im in zip(raw_images, label_images):
             if supports_memmap(raw_im) and supports_memmap(label_im):
                 shape = load_image(raw_im).shape
                 assert len(shape) in (2, 3)
 
-                multichan = len(shape) == 3
-                if is_multichan is None:
-                    is_multichan = multichan
-                else:
-                    assert is_multichan == multichan
-
+                is_multichan = len(shape) == 3
                 # we assume axis last
                 if is_multichan:
                     # use heuristic to decide whether the data is stored in channel last or channel first order:
@@ -288,8 +307,10 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         # print(f"Raw path: {raw}, label path: {label}")
 
         raw = load_image(raw_path)
-        label = create_stacc_ground_truth_label_from_json(raw_path, label, eps=self.eps, sigma=self.sigma, lower_bound=self.lower_bound, upper_bound=self.upper_bound)
-        
+        label = create_stacc_ground_truth_label_from_json(
+            raw_path, label, eps=self.eps, sigma=self.sigma, lower_bound=self.lower_bound, upper_bound=self.upper_bound
+        )
+
         # print(f"type of raw: {type(raw)}, type of label: {type(label)}")
 
         have_raw_channels = raw.ndim == 3
@@ -357,41 +378,68 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         raw = ensure_tensor_with_channels(raw, ndim=self._ndim, dtype=self.dtype)
         labels = ensure_tensor_with_channels(labels, ndim=self._ndim, dtype=self.label_dtype)
         return raw, labels
-    
-    
+
+
 def _split_data_paths_into_training_dataset(dataset_file):
     with open(dataset_file) as dataset:
         dict_dataset = json.load(dataset)
 
-    train_images = dict_dataset['train']['images']
-    train_labels = dict_dataset['train']['labels']
+    train_images = dict_dataset["train"]["images"]
+    train_labels = dict_dataset["train"]["labels"]
 
-    val_images = dict_dataset['val']['images']
-    val_labels = dict_dataset['val']['labels']
+    val_images = dict_dataset["val"]["images"]
+    val_labels = dict_dataset["val"]["labels"]
 
-    test_images = dict_dataset['test']['images']
-    test_labels = dict_dataset['test']['labels']
+    test_images = dict_dataset["test"]["images"]
+    test_labels = dict_dataset["test"]["labels"]
 
     return train_images, train_labels, val_images, val_labels, test_images, test_labels
 
 
-def StaccDataLoader(train_dataset_file, patch_shape, n_workers, batch_size, eps=None, sigma=None, lower_bound=None, upper_bound=None):
-    
-    train_images, train_labels, val_images, val_labels, test_images, test_labels = _split_data_paths_into_training_dataset(train_dataset_file)
+def get_stacc_data_loader(
+    train_dataset_file: str,
+    patch_shape: Tuple[int, ...],
+    n_workers: int,
+    batch_size: int,
+    eps: Optional[float] = None,
+    sigma: Optional[float] = None,
+    lower_bound: Optional[float] = None,
+    upper_bound: Optional[float] = None,
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    """Get training, validation and test data loader for a STACC model.
 
-    train_set = StaccImageCollectionDataset(train_images, train_labels, patch_shape, eps=eps, sigma=sigma, 
-                                                 lower_bound=lower_bound, upper_bound=upper_bound)
-    val_set = StaccImageCollectionDataset(val_images, val_labels, patch_shape, eps=eps, sigma=sigma, 
-                                               lower_bound=lower_bound, upper_bound=upper_bound)
-    test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma, 
-                                                lower_bound=lower_bound, upper_bound=upper_bound)
+    Args:
+        train_dataset_file: Path to a JSON file with file paths for the train, val and test splits.
+        patch_shape: The patch shape for the data loaders.
+        n_workers: Number of workers for the data loaders.
+        batch_size: The batch size for training.
+        eps: A small epsilon value used in the logarithmic calculation for truncating.
+        sigma: Sigma value for Gaussian blur. If None, individual stamps are applied.
+        lower_bound: The minimum allowable value for sigma.
+        upper_bound: The maximum allowable value for sigma.
 
-    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, 
+    Returns:
+        The data loader for the training split.
+        The data loader for the validation split.
+        The data loader for the test split.
+    """
+
+    train_images, train_labels, val_images, val_labels, test_images, test_labels =\
+        _split_data_paths_into_training_dataset(train_dataset_file)
+
+    train_set = StaccImageCollectionDataset(train_images, train_labels, patch_shape, eps=eps, sigma=sigma,
+                                            lower_bound=lower_bound, upper_bound=upper_bound)
+    val_set = StaccImageCollectionDataset(val_images, val_labels, patch_shape, eps=eps, sigma=sigma,
+                                          lower_bound=lower_bound, upper_bound=upper_bound)
+    test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma,
+                                           lower_bound=lower_bound, upper_bound=upper_bound)
+
+    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
+                                  num_workers=n_workers)
+    val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True,
                                 num_workers=n_workers)
-    val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True, 
-                                num_workers=n_workers)
-    test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True, 
-                                num_workers=n_workers)
+    test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True,
+                                 num_workers=n_workers)
 
     train_dataloader.shuffle = True
     val_dataloader.shuffle = True
