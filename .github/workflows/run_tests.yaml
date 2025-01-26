@@ -1,0 +1,40 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+  pull_request:  # run CI on commits to any open PR
+  workflow_dispatch:  # can manually trigger CI from GitHub actions tab
+
+
+jobs:
+  test:
+    name: ${{ matrix.os }} ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: 'environment.yaml'
+          create-args: >-
+            python=${{ matrix.python-version }}
+
+      - name: Install STACC
+        shell: bash -l {0}
+        run: pip install --no-deps -e .
+
+      - name: Run tests
+        shell: bash -l {0}
+        run: python -m unittest discover -s test -v
