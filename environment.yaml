@@ -4,6 +4,7 @@ name:
     stacc
 dependencies:
     - bioimageio.core
+    - imageio
     - napari
     - pip
     - pyqt
