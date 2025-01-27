@@ -1,0 +1,14 @@
+channels:
+    - conda-forge
+name:
+    stacc
+dependencies:
+    - bioimageio.core
+    - imageio
+    - napari
+    - pip
+    - pyqt
+    - pytorch
+    - tensorboard
+    - torch_em
+    - torchvision
