@@ -9,6 +9,7 @@ from stacc import run_stacc_training
 # Allow loading of truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 def main(args):
     """
     Main function to execute the training process.
@@ -39,6 +40,7 @@ def main(args):
         save_new_model_path=config.save_new_model_path,
         iterations=config.iterations
     )
+
 
 if __name__ == "__main__":
     # Create an argument parser for command-line options

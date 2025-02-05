@@ -3,3 +3,4 @@ images/
 models/
 videos/
 *.egg-info/
+napari-example-data/

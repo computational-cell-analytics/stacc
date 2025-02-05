@@ -30,7 +30,6 @@ def get_postprocessing_parameters(model_name: str) -> Tuple[float, float]:
         threshold_abs = 2.4
     return min_distance, threshold_abs
 
-
 def get_model(model_name: str) -> UNet2d:
     """Get the model for colony counting.
 
@@ -156,7 +155,7 @@ class TrainingConfig:
 
     Attributes:
         model_name (str): The name of the model.
-        train_dataset (str): Path to the training dataset file. Should be a json, containing a dictionary with train, val, and test image and corresponding label paths.
+        train_dataset (str): Path to the training dataset file. Should be a json, containing a dictionary with train, val, and test image and corresponding label PATHS.
         pretrained_model_path (str): Path to the pretrained model checkpoint.
         save_new_model_path (str): Path to save the new model checkpoints. By default, latest and best will be stored.
         batch_size (int): Batch size for the data loader.

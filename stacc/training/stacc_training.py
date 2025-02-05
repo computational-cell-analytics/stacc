@@ -8,7 +8,7 @@ from contextlib import contextmanager, nullcontext
 from typing import Optional, Union
 
 # stacc package imports
-from stacc import get_device, StaccDataLoader
+from stacc import get_device, StaccDataLoader, StaccNapariDataLoader
 
 
 def _check_loaders(train_loader, val_loader):
@@ -85,12 +85,12 @@ def _filter_warnings(ignore_warnings):
 
 def run_stacc_training(
         model_name: str,
-        train_loader: StaccDataLoader,
-        val_loader: StaccDataLoader,
+        train_loader: Union[StaccDataLoader, StaccNapariDataLoader],
+        val_loader: Union[StaccDataLoader, StaccNapariDataLoader],
         n_epochs: int = 25,
         learning_rate: Optional[float] = 1e-4, 
         device: Optional[Union[str, torch.device]] = None,
-        pretrained_model_path: Optional[Union[str, os.PathLike]] = None, 
+        pretrained_model_path: Optional[Union[str, os.PathLike]] = None,
         save_new_model_path: Optional[Union[str, os.PathLike]] = None,
         iterations: Optional[int] = None, 
     ) -> None:
