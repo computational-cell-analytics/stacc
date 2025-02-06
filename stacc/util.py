@@ -31,14 +31,14 @@ def get_postprocessing_parameters(model_name: str) -> Tuple[float, float]:
     return min_distance, threshold_abs
 
 
-def get_model(model_name: str) -> UNet2d:
-    """Get the model for colony counting.
+def get_model_path(model_name: str) -> str:
+    """Return the filepath to a pretrained model.
 
     Args:
         model_name: The name of the model. The models 'cells' and 'colonies' are supported.
 
     Returns:
-        The model.
+        The path to the saved model weights.
     """
     assert model_name in ("cells", "colonies")
     fpath = os.path.split(__file__)[0]
@@ -50,6 +50,19 @@ def get_model(model_name: str) -> UNet2d:
             "This is likely because you have installed the package in an incorrect way."
             "Please follow the installation instructions in the README exactly and try again."
         )
+    return model_path
+
+
+def get_model(model_name: str) -> UNet2d:
+    """Get the model for colony counting.
+
+    Args:
+        model_name: The name of the model. The models 'cells' and 'colonies' are supported.
+
+    Returns:
+        The model.
+    """
+    model_path = get_model_path(model_name)
 
     if model_name == "cells":
         model_kwargs = {

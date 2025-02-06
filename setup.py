@@ -14,6 +14,7 @@ setup(
     entry_points={
         "console_scripts": [
             "stacc.counting = stacc.prediction:main",
+            "stacc.training_from_napari = stacc.training.napari_training:main",
         ],
         "napari.manifest": [
             "stacc = stacc:napari.yaml",

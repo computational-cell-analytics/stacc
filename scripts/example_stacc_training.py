@@ -11,6 +11,10 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 def main(args):
     """Main function to execute the training process.
 
+    This function assumes label in COCO data format, e.g. from the AGAR dataset.
+    The training configuration is stored in an extra training file, check out the file 'test_config.json'
+    for an example configuration file.
+
     Args:
         args (argparse.Namespace): Parsed command-line arguments containing the path to the configuration file.
     """
