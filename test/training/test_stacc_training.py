@@ -22,7 +22,7 @@ class TestStaccTraining(unittest.TestCase):
         labels = pd.DataFrame({"index": index, "axis-0": ax0, "axis-1": ax1})
 
         image_path = os.path.join(image_folder, f"image_{i}.tif")
-        label_path = os.path.join(image_folder, f"labels_{i}.csv")
+        label_path = os.path.join(label_folder, f"labels_{i}.csv")
 
         imageio.imwrite(image_path, image)
         labels.to_csv(label_path, index=False)
@@ -63,7 +63,7 @@ class TestStaccTraining(unittest.TestCase):
         except OSError:
             pass
 
-    def test_run_stacc_training_from_napari_labels(self):
+    def test_run_stacc_training(self):
         from stacc.training import run_stacc_training, get_stacc_data_loader, width_to_sigma
 
         train_dict = self._create_napari_training_data()
@@ -80,6 +80,22 @@ class TestStaccTraining(unittest.TestCase):
         )
 
         # Check that the model has been trained
+        self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "best.pt"))
+        self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "latest.pt"))
+
+    def test_run_stacc_training_run_stacc_training_from_napari_annotations(self):
+        from stacc.training import run_stacc_training_from_napari_annotations
+
+        model_name = "test-model"
+        self._create_napari_training_data()
+
+        run_stacc_training_from_napari_annotations(
+            name=model_name, pretrained_model_name=None,
+            average_object_width=6,
+            image_folder=os.path.join(self.tmp_folder, "images"),
+            label_folder=os.path.join(self.tmp_folder, "labels"),
+            n_epochs=3,
+        )
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "best.pt"))
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "latest.pt"))
 

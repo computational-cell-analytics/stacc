@@ -136,6 +136,7 @@ def create_stacc_ground_truth_label_from_json(
     sigma: Optional[float] = None,
     lower_bound: Optional[float] = None,
     upper_bound: Optional[float] = None,
+    bounding_box: Optional[Tuple[slice]] = None,
 ):
     """Create a ground truth label matrix from JSON bounding box annotations.
 
@@ -146,6 +147,7 @@ def create_stacc_ground_truth_label_from_json(
         sigma: Sigma value for Gaussian blur. If None, individual stamps are applied.
         lower_bound: Lower bound for Gaussian sigma. If None, no lower bound for sigma will be set.
         upper_bound: Upper bound for Gaussian sigma If None, no upper bound for sigma will be set.
+        bounding_box: A bounding box for creating he labels only in a sub-part of the image.
 
     Returns:
         A 2D array representing the stacc ground truth label matrix.
@@ -156,10 +158,14 @@ def create_stacc_ground_truth_label_from_json(
     bboxes = label_dict["labels"]
     n_colonies = len(bboxes)  # Number of annotations / bounding boxes
 
-    image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
-    im = imread(image_path)
-
-    n_rows, n_columns = im.shape[:2]
+    if bounding_box is None:
+        image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
+        im = imread(image_path)
+        n_rows, n_columns = im.shape[:2]
+    else:
+        assert len(bounding_box) == 2
+        n_rows = bounding_box[0].stop - bounding_box[0].start
+        n_columns = bounding_box[1].stop - bounding_box[1].start
 
     stacc_gt_label = np.zeros((n_rows, n_columns))  # Create empty ground truth label
     if n_colonies > 0:
@@ -175,6 +181,15 @@ def create_stacc_ground_truth_label_from_json(
         y_coordinates = np.array(
             [(int(bboxes[i]["x"]) + max(int(bboxes[i]["height"]/2), 1)) for i in reasonable_indices], dtype="int"
         )
+
+        # If we have a bounding box we need to subtract the lower corner and filter out points that are outside.
+        if bounding_box is not None:
+            x0, y0, x1, y1 = bounding_box[0].start, bounding_box[1].start, bounding_box[0].stop, bounding_box[1].stop
+            x_coordinates -= x0
+            y_coordinates -= y0
+            # Filter ranges:
+            x_coordinates = x_coordinates[np.logical_and(x_coordinates >= 0, x_coordinates < (x1 - x0))]
+            y_coordinates = y_coordinates[np.logical_and(y_coordinates >= 0, y_coordinates < (y1 - y0))]
 
         if sigma:
             # Process all coordinates at once
@@ -204,6 +219,7 @@ def create_stacc_labels_from_csv(
     csv_path: str,
     sigma: float,
     eps: float = 0.00001,
+    bounding_box: Optional[Tuple[slice]] = None,
 ) -> np.ndarray:
     """Create ground truth labels from CSV point annotations.
 
@@ -212,6 +228,7 @@ def create_stacc_labels_from_csv(
         csv_path: Path to the CSV file containing point coordinates.
         sigma: Sigma value for Gaussian blur.
         eps: Epsilon value for Gaussian truncation. Default is 0.00001.
+        bounding_box: A bounding box for creating he labels only in a sub-part of the image.
 
     Returns:
         A 2D array representing the stacc ground truth label matrix.
@@ -220,11 +237,26 @@ def create_stacc_labels_from_csv(
     x_coordinates = np.round(df["axis-0"].values).astype(int)
     y_coordinates = np.round(df["axis-1"].values).astype(int)
 
-    im = imread(image_path)
-    n_rows, n_columns = im.shape[:2]
+    if bounding_box is None:
+        im = imread(image_path)
+        n_rows, n_columns = im.shape[:2]
+    else:
+        assert len(bounding_box) == 2
+        n_rows = bounding_box[0].stop - bounding_box[0].start
+        n_columns = bounding_box[1].stop - bounding_box[1].start
 
     stacc_gt_label = np.zeros((n_rows, n_columns))
     if len(x_coordinates) > 0:
+
+        # If we have a bounding box we need to subtract the lower corner and filter out points that are outside.
+        if bounding_box is not None:
+            x0, y0, x1, y1 = bounding_box[0].start, bounding_box[1].start, bounding_box[0].stop, bounding_box[1].stop
+            x_coordinates -= x0
+            y_coordinates -= y0
+            # Filter ranges:
+            x_coordinates = x_coordinates[np.logical_and(x_coordinates >= 0, x_coordinates < (x1 - x0))]
+            y_coordinates = y_coordinates[np.logical_and(y_coordinates >= 0, y_coordinates < (y1 - y0))]
+
         stacc_gt_label[x_coordinates, y_coordinates] = 1
         stacc_gt_label = gaussian(stacc_gt_label, sigma=sigma, mode="constant")
         stacc_gt_label[np.where(stacc_gt_label < eps)] = 0
@@ -319,17 +351,22 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         # print(f"Raw path: {raw}, label path: {label}")
 
         raw = load_image(raw_path)
+        shape = raw.shape
+        bb = self._sample_bounding_box(shape)
 
         _, label_extension = os.path.splitext(label_path)
         if label_extension == ".json":
             label = create_stacc_ground_truth_label_from_json(
                 raw_path, label_path, eps=self.eps, sigma=self.sigma,
-                lower_bound=self.lower_bound, upper_bound=self.upper_bound
+                lower_bound=self.lower_bound, upper_bound=self.upper_bound,
+                bounding_box=bb
             )
         elif label_extension.lower() == ".csv":
             if self.sigma is None:
                 raise RuntimeError("Training from CSV labels requires a sigma value.")
-            label = create_stacc_labels_from_csv(raw_path, label_path, sigma=self.sigma, eps=self.eps)
+            label = create_stacc_labels_from_csv(
+                raw_path, label_path, sigma=self.sigma, eps=self.eps, bounding_box=bb
+            )
         else:
             raise ValueError(f"Unsupported label file extension: {label_extension}")
 
@@ -340,7 +377,6 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         if have_label_channels:
             raise NotImplementedError("Multi-channel labels are not supported.")
 
-        shape = raw.shape
         # we determine if image has channels as te first or last axis base on array shape.
         # This will work only for images with less than 16 channels.
         prefix_box = tuple()
@@ -355,20 +391,20 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
                 prefix_box = (slice(None), )
 
         # sample random bounding box for this image
-        bb = self._sample_bounding_box(shape)
         # print(f"bb: {bb}")
         raw_patch = np.array(raw[prefix_box + bb])
         label_patch = np.array(label[bb])
 
         if self.sampler is not None:
-            sample_id = 0
-            while not self.sampler(raw_patch, label_patch):
-                bb = self._sample_bounding_box(shape)
-                raw_patch = np.array(raw[prefix_box + bb])
-                label_patch = np.array(label[bb])
-                sample_id += 1
-                if sample_id > self.max_sampling_attempts:
-                    raise RuntimeError(f"Could not sample a valid batch in {self.max_sampling_attempts} attempts")
+            raise NotImplementedError("Sampler are currently not supported")
+            # sample_id = 0
+            # while not self.sampler(raw_patch, label_patch):
+            #     bb = self._sample_bounding_box(shape)
+            #     raw_patch = np.array(raw[prefix_box + bb])
+            #     label_patch = np.array(label[bb])
+            #     sample_id += 1
+            #     if sample_id > self.max_sampling_attempts:
+            #         raise RuntimeError(f"Could not sample a valid batch in {self.max_sampling_attempts} attempts")
 
         # to channel first
         if have_raw_channels and len(prefix_box) == 0:
