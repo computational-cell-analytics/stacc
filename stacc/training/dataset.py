@@ -1,13 +1,14 @@
 import json
 import os
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 import torch
 
 from skimage.io import imread
 from skimage.filters import gaussian
-from torch_em.util import ensure_spatial_array, ensure_tensor_with_channels, load_image, supports_memmap
+from torch_em.util import ensure_spatial_array, ensure_tensor_with_channels, load_image
 from torch.utils.data import DataLoader
 
 
@@ -198,6 +199,40 @@ def create_stacc_ground_truth_label_from_json(
         return stacc_gt_label
 
 
+def create_stacc_labels_from_csv(
+    image_path: str,
+    csv_path: str,
+    sigma: float,
+    eps: float = 0.00001,
+) -> np.ndarray:
+    """Create ground truth labels from CSV point annotations.
+
+    Args:
+        image_path: Path to the input image.
+        csv_path: Path to the CSV file containing point coordinates.
+        sigma: Sigma value for Gaussian blur.
+        eps: Epsilon value for Gaussian truncation. Default is 0.00001.
+
+    Returns:
+        A 2D array representing the stacc ground truth label matrix.
+    """
+    df = pd.read_csv(csv_path)
+    x_coordinates = np.round(df["axis-0"].values).astype(int)
+    y_coordinates = np.round(df["axis-1"].values).astype(int)
+
+    im = imread(image_path)
+    n_rows, n_columns = im.shape[:2]
+
+    stacc_gt_label = np.zeros((n_rows, n_columns))
+    if len(x_coordinates) > 0:
+        stacc_gt_label[x_coordinates, y_coordinates] = 1
+        stacc_gt_label = gaussian(stacc_gt_label, sigma=sigma, mode="constant")
+        stacc_gt_label[np.where(stacc_gt_label < eps)] = 0
+        stacc_gt_label = stacc_gt_label * 2 * 4 * np.pi * sigma**2
+
+    return stacc_gt_label
+
+
 class StaccImageCollectionDataset(torch.utils.data.Dataset):
     """@private
     """
@@ -208,29 +243,6 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
             raise ValueError(
                 f"Expect same number of raw and label images, got {len(raw_images)} and {len(label_images)}"
             )
-
-        # raw_im and label_im are paths to the images.
-        for raw_im, label_im in zip(raw_images, label_images):
-            if supports_memmap(raw_im) and supports_memmap(label_im):
-                shape = load_image(raw_im).shape
-                assert len(shape) in (2, 3)
-
-                is_multichan = len(shape) == 3
-                # we assume axis last
-                if is_multichan:
-                    # use heuristic to decide whether the data is stored in channel last or channel first order:
-                    # if the last axis has a length smaller than 16 we assume that it's the channel axis,
-                    # otherwise we assume it's a spatial axis and that the first axis is the channel axis.
-                    if shape[-1] < 16:
-                        shape = shape[:-1]
-                    else:
-                        shape = shape[1:]
-
-                label = create_stacc_ground_truth_label_from_json(raw_im, label_im)
-                label_shape = label.shape
-                if shape != label_shape:
-                    msg = f"Expect raw and labels of same shape, got {shape}, {label_shape} for {raw_im}, {label_im}"
-                    raise ValueError(msg)
 
     def __init__(
         self,
@@ -248,7 +260,7 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         eps=1e-5,
         sigma=None,
         lower_bound=None,
-        upper_bound=None
+        upper_bound=None,
     ):
         self._check_inputs(raw_image_paths, label_image_paths)
         self.raw_images = raw_image_paths
@@ -302,14 +314,24 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         if self.sample_random_index:
             index = np.random.randint(0, len(self.raw_images))
         # these are just the file paths
-        raw_path, label = self.raw_images[index], self.label_images[index]
+        raw_path, label_path = self.raw_images[index], self.label_images[index]
 
         # print(f"Raw path: {raw}, label path: {label}")
 
         raw = load_image(raw_path)
-        label = create_stacc_ground_truth_label_from_json(
-            raw_path, label, eps=self.eps, sigma=self.sigma, lower_bound=self.lower_bound, upper_bound=self.upper_bound
-        )
+
+        _, label_extension = os.path.splitext(label_path)
+        if label_extension == ".json":
+            label = create_stacc_ground_truth_label_from_json(
+                raw_path, label_path, eps=self.eps, sigma=self.sigma,
+                lower_bound=self.lower_bound, upper_bound=self.upper_bound
+            )
+        elif label_extension.lower() == ".csv":
+            if self.sigma is None:
+                raise RuntimeError("Training from CSV labels requires a sigma value.")
+            label = create_stacc_labels_from_csv(raw_path, label_path, sigma=self.sigma, eps=self.eps)
+        else:
+            raise ValueError(f"Unsupported label file extension: {label_extension}")
 
         # print(f"type of raw: {type(raw)}, type of label: {type(label)}")
 
@@ -381,8 +403,12 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
 
 
 def _split_data_paths_into_training_dataset(dataset_file):
-    with open(dataset_file) as dataset:
-        dict_dataset = json.load(dataset)
+    if isinstance(dataset_file, str):
+        with open(dataset_file) as dataset:
+            dict_dataset = json.load(dataset)
+    else:
+        assert isinstance(dataset_file, dict)
+        dict_dataset = dataset_file
 
     train_images = dict_dataset["train"]["images"]
     train_labels = dict_dataset["train"]["labels"]
@@ -390,18 +416,21 @@ def _split_data_paths_into_training_dataset(dataset_file):
     val_images = dict_dataset["val"]["images"]
     val_labels = dict_dataset["val"]["labels"]
 
-    test_images = dict_dataset["test"]["images"]
-    test_labels = dict_dataset["test"]["labels"]
+    if "test" in dict_dataset:
+        test_images = dict_dataset["test"]["images"]
+        test_labels = dict_dataset["test"]["labels"]
+    else:
+        test_images, test_labels = None, None
 
     return train_images, train_labels, val_images, val_labels, test_images, test_labels
 
 
 def get_stacc_data_loader(
-    train_dataset_file: str,
+    train_dataset_file: Union[str, Dict[str, Dict[str, List[str]]]],
     patch_shape: Tuple[int, ...],
     n_workers: int,
     batch_size: int,
-    eps: Optional[float] = None,
+    eps: float = 1e-5,
     sigma: Optional[float] = None,
     lower_bound: Optional[float] = None,
     upper_bound: Optional[float] = None,
@@ -410,6 +439,7 @@ def get_stacc_data_loader(
 
     Args:
         train_dataset_file: Path to a JSON file with file paths for the train, val and test splits.
+            Can also be a dictionary with the respective file paths. The test split is optional.
         patch_shape: The patch shape for the data loaders.
         n_workers: Number of workers for the data loaders.
         batch_size: The batch size for training.
@@ -431,18 +461,19 @@ def get_stacc_data_loader(
                                             lower_bound=lower_bound, upper_bound=upper_bound)
     val_set = StaccImageCollectionDataset(val_images, val_labels, patch_shape, eps=eps, sigma=sigma,
                                           lower_bound=lower_bound, upper_bound=upper_bound)
-    test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma,
-                                           lower_bound=lower_bound, upper_bound=upper_bound)
 
-    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
-                                  num_workers=n_workers)
-    val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True,
-                                num_workers=n_workers)
-    test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True,
-                                 num_workers=n_workers)
+    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
+    val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
 
     train_dataloader.shuffle = True
     val_dataloader.shuffle = True
-    test_dataloader.shuffle = True
+
+    if test_images is None:
+        test_dataloader = None
+    else:
+        test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma,
+                                               lower_bound=lower_bound, upper_bound=upper_bound)
+        test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
+        test_dataloader.shuffle = True
 
     return train_dataloader, val_dataloader, test_dataloader
