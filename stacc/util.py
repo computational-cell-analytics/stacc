@@ -40,7 +40,8 @@ def get_model_path(model_name: str) -> str:
     Returns:
         The path to the saved model weights.
     """
-    assert model_name in ("cells", "colonies")
+    if model_name not in ("cells", "colonies"):
+        raise ValueError(f"Invalid model name, expected one of 'cells', 'colonies', got {model_name}.")
     fpath = os.path.split(__file__)[0]
     model_path = os.path.join(fpath, "..", "models", f"{model_name}.pt")
 
