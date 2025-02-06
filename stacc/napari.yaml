@@ -5,7 +5,7 @@ categories: ["Image Processing"]
 contributions:
   commands:
     - id: stacc.counting
-      python_name: stacc.stacc_plugin.counting:counting
+      python_name: stacc.stacc_plugin.counting:CountingWidget
       title: Counting plugin
 
   widgets:

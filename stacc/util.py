@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional, Union, Tuple
 
 import torch
@@ -40,7 +41,8 @@ def get_model_path(model_name: str) -> str:
     Returns:
         The path to the saved model weights.
     """
-    assert model_name in ("cells", "colonies")
+    if model_name not in ("cells", "colonies"):
+        raise ValueError(f"Invalid model name, expected one of 'cells', 'colonies', got {model_name}.")
     fpath = os.path.split(__file__)[0]
     model_path = os.path.join(fpath, "..", "models", f"{model_name}.pt")
 
@@ -53,16 +55,18 @@ def get_model_path(model_name: str) -> str:
     return model_path
 
 
-def get_model(model_name: str) -> UNet2d:
+def get_model(model_name: str, model_path: Optional[Union[str, Path]] = None) -> UNet2d:
     """Get the model for colony counting.
 
     Args:
         model_name: The name of the model. The models 'cells' and 'colonies' are supported.
+        model_path: Optional path to a pretrained model. If not given, the default cell / colony model will be loaded.
 
     Returns:
         The model.
     """
-    model_path = get_model_path(model_name)
+    if model_path is None:
+        model_path = get_model_path(model_name)
 
     if model_name == "cells":
         model_kwargs = {

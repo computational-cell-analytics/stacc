@@ -1,8 +1,9 @@
 import argparse
+import os
 from PIL import ImageFile
 
 # stacc package imports
-from stacc.training import get_stacc_data_loader, load_config, run_stacc_training
+from stacc.training import get_stacc_data_loader, load_config, run_stacc_training, export_model
 
 # Allow loading of truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -42,6 +43,12 @@ def main(args):
         iterations=config.iterations
     )
 
+    #
+    if args.export_path:
+        checkpoint_path = os.path.join(config.save_new_model_path, "checkpoints", config.model_name, "best.pt")
+        print("The trained model was exported to", args.export_path)
+        export_model(checkpoint_path, args.export_path)
+
 
 if __name__ == "__main__":
     # Create an argument parser for command-line options
@@ -52,6 +59,10 @@ if __name__ == "__main__":
         "config",
         type=str,
         help="Path to the JSON configuration file containing model and training parameters."
+    )
+    parser.add_argument(
+        "--export_path",
+        help="Path for exporting the trained model in a format that is compatible with the napri plugin."
     )
     args = parser.parse_args()
 

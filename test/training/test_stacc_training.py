@@ -98,6 +98,7 @@ class TestStaccTraining(unittest.TestCase):
         )
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "best.pt"))
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "latest.pt"))
+        self.assertTrue(os.path.join(self.tmp_folder, f"{model_name}.pt"))
 
 
 if __name__ == "__main__":

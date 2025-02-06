@@ -68,6 +68,36 @@ def run_counting(
     return predicted_coords
 
 
+def run_counting_stacked(
+    model: torch.nn.Module,
+    image_stack: np.ndarray,
+    min_distance: float = 10,
+    threshold_abs: float = 1.0,
+) -> np.ndarray:
+    """Predict object centroid coordinates for an image stack.
+
+    Args:
+        model: The U-Net trained for the counting task.
+        image_stack: The image data with 3 dimensions.
+        min_distance: The minimal distance between detected objects, in pixels.
+        threshold_abs: The threshold for detecting an object, with respect to the output predictions.
+
+    Returns:
+        The coordinates of predicted objects.
+    """
+    predicted_coords = []
+    for i, frame in enumerate(image_stack):
+        frame_coords = run_counting(model, frame, min_distance, threshold_abs)
+        if len(frame_coords) == 0:
+            continue
+        frame_coords = np.concatenate([np.full(frame_coords.shape[0], i)[:, None], frame_coords], axis=1)
+        predicted_coords.append(frame_coords)
+    if len(predicted_coords) == 0:
+        return np.zeros((0, 3), dtype="int")
+    predicted_coords = np.concatenate(predicted_coords)
+    return predicted_coords
+
+
 def _get_inputs(input_, pattern):
     if not os.path.exists(input_):
         raise ValueError(f"Invalid input path {input_}")
@@ -109,12 +139,14 @@ def main():
         "-o", "--output",
         help="The output folder for saving results. If it is given a csv with the centroids of counted objects will be saved for each image."  # noqa
     )
+    parser.add_argument("--custom_model", help="Path to a custom trained model.")
     args = parser.parse_args()
 
     inputs = _get_inputs(args.input, args.pattern)
     print("Counting", args.model, "in", len(inputs), "image(s).")
 
-    model = get_model(args.model)
+    model = get_model(args.model, args.custom_model)
+    # TODO enable over-riding this for custom models.
     min_distance, threshold_abs = get_postprocessing_parameters(args.model)
 
     for image_path in inputs:
