@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 
 from .dataset import get_stacc_data_loader, width_to_sigma
 from .stacc_training import run_stacc_training
+from .util import export_model
 from ..util import get_model_path
 
 
@@ -113,6 +114,13 @@ def run_stacc_training_from_napari_annotations(
         n_epochs=n_epochs, pretrained_model_path=pretrained_model_path,
         save_new_model_path=save_new_model_path,
     )
+
+    # Export the model, so that it can be used directly in napari or for batched prediction.
+    export_root = "" if save_new_model_path is None else save_new_model_path
+    checkpoint_path = os.path.join(export_root, "checkpoints", name, "best.pt")
+    export_path = os.path.join(export_root, f"{name}.pt")
+    print("The trained model was exported to", export_path)
+    export_model(checkpoint_path, export_path)
 
 
 def main():

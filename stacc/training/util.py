@@ -2,6 +2,25 @@ import json
 from dataclasses import dataclass
 from typing import Tuple, List
 
+import torch
+
+
+def export_model(checkpoint_path: str, export_path: str) -> None:
+    """Export a trained model from a checkpoint.
+
+    The exported model can then be used within the napari plugin or the CLI for counting.
+
+    Args:
+        checkpoint_path: The path to the checkpoint.
+        export_path: Where to save the model.
+    """
+    model = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    model_state = model["model_state"]
+    model_kwargs = model["init"]["model_kwargs"]
+    print("The model from", checkpoint_path, "was created with the following kwargs:")
+    print(model_kwargs)
+    torch.save(model_state, export_path)
+
 
 @dataclass
 class TrainingConfig:

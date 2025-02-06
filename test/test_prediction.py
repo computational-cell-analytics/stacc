@@ -15,6 +15,16 @@ class TestPrediction(unittest.TestCase):
         self.assertEqual(coords.ndim, 2)
         self.assertEqual(coords.shape[1], 2)
 
+    def test_run_counting_stacked(self):
+        from stacc.prediction import run_counting_stacked
+        from stacc.unet_2d import UNet2d
+
+        model = UNet2d(in_channels=1, out_channels=1)
+        image_stack = np.random.rand(5, 256, 256)
+        coords = run_counting_stacked(model, image_stack)
+        self.assertEqual(coords.ndim, 2)
+        self.assertEqual(coords.shape[1], 3)
+
 
 if __name__ == "__main__":
     unittest.main()
