@@ -356,7 +356,7 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
 
         _, label_extension = os.path.splitext(label_path)
         if label_extension == ".json":
-            label = create_stacc_ground_truth_label_from_json(
+            label_patch = create_stacc_ground_truth_label_from_json(
                 raw_path, label_path, eps=self.eps, sigma=self.sigma,
                 lower_bound=self.lower_bound, upper_bound=self.upper_bound,
                 bounding_box=bb
@@ -364,21 +364,15 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
         elif label_extension.lower() == ".csv":
             if self.sigma is None:
                 raise RuntimeError("Training from CSV labels requires a sigma value.")
-            label = create_stacc_labels_from_csv(
+            label_patch = create_stacc_labels_from_csv(
                 raw_path, label_path, sigma=self.sigma, eps=self.eps, bounding_box=bb
             )
         else:
             raise ValueError(f"Unsupported label file extension: {label_extension}")
 
-        # print(f"type of raw: {type(raw)}, type of label: {type(label)}")
-
-        have_raw_channels = raw.ndim == 3
-        have_label_channels = label.ndim == 3
-        if have_label_channels:
-            raise NotImplementedError("Multi-channel labels are not supported.")
-
-        # we determine if image has channels as te first or last axis base on array shape.
+        # We determine if image has channels as te first or last axis base on array shape.
         # This will work only for images with less than 16 channels.
+        have_raw_channels = raw.ndim == 3
         prefix_box = tuple()
         if have_raw_channels:
             # use heuristic to decide whether the data is stored in channel last or channel first order:
@@ -390,13 +384,10 @@ class StaccImageCollectionDataset(torch.utils.data.Dataset):
                 shape = shape[1:]
                 prefix_box = (slice(None), )
 
-        # sample random bounding box for this image
-        # print(f"bb: {bb}")
         raw_patch = np.array(raw[prefix_box + bb])
-        label_patch = np.array(label[bb])
 
         if self.sampler is not None:
-            raise NotImplementedError("Sampler are currently not supported")
+            raise NotImplementedError("Samplers are currently not supported.")
             # sample_id = 0
             # while not self.sampler(raw_patch, label_patch):
             #     bb = self._sample_bounding_box(shape)
