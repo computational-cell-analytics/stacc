@@ -13,7 +13,7 @@ The code, models and documentation will be made open-source upon publication of 
 
 # Installation
 
-We recommend to install the software in a new conda environment following these steps:
+We recommend to install the software in a new conda environment by opening a terminal and then following these steps:
 ```
 git clone https://github.com/computational-cell-analytics/stacc
 cd stacc
@@ -22,7 +22,7 @@ conda activate stacc
 pip install -e .
 ```
 
-To install it in an existing python environment please ensure that the necessary environments (pytorch, scikit-image, napari) are installed in it and then run `$ pip install -e .` in that environment.
+To install it in an existing python environment please ensure that the necessary dependencies (pytorch, scikit-image, napari) are installed in it and then run `$ pip install -e .` in that environment.
 
 If you are not familiar with conda then check out [this introduction](https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html).
 

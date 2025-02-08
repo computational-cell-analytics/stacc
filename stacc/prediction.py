@@ -48,6 +48,14 @@ def run_counting(
         image = image[None]
     assert image.ndim == 3
 
+    # Check if the number of channels in the image match the model inputs.
+    n_channels = image.shape[0]
+    if n_channels != model.in_channels:
+        raise RuntimeError(
+            f"Wrong number of channels: The number of channels in your image is {n_channels}, "
+            f"which does not match the number of input channels of the model, which is {model.in_channels}."
+        )
+
     # Normalize the image.
     image = standardize(image)
 

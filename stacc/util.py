@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 from typing import Optional, Union, Tuple
 
-import torch
 import numpy as np
+import pooch
+import torch
 from imageio.v3 import imread
 
 from .unet_2d import UNet2d
@@ -32,6 +33,25 @@ def get_postprocessing_parameters(model_name: str) -> Tuple[float, float]:
     return min_distance, threshold_abs
 
 
+def _get_model_registry():
+    registry = {
+        "cells": "1f62a48d25e86a461777f282ff41a534655c03ecc47e3b61f2f67f117583ac94",
+        "colonies": "c8380efff2725bd9d2c464a09b422a0456c736509bc4e280d3e91d8ba4f38cc7",
+    }
+    urls = {
+        "cells": "https://owncloud.gwdg.de/index.php/s/IG9e8N1AuBk7vwL/download",
+        "colonies": "https://owncloud.gwdg.de/index.php/s/L9xTn937t8YpIzD/download",
+    }
+    cache_dir = os.path.expanduser(pooch.os_cache("stacc"))
+    models = pooch.create(
+        path=os.path.join(cache_dir, "models"),
+        base_url="",
+        registry=registry,
+        urls=urls,
+    )
+    return models
+
+
 def get_model_path(model_name: str) -> str:
     """Return the filepath to a pretrained model.
 
@@ -43,14 +63,13 @@ def get_model_path(model_name: str) -> str:
     """
     if model_name not in ("cells", "colonies"):
         raise ValueError(f"Invalid model name, expected one of 'cells', 'colonies', got {model_name}.")
-    fpath = os.path.split(__file__)[0]
-    model_path = os.path.join(fpath, "..", "models", f"{model_name}.pt")
-
+    model_registry = _get_model_registry()
+    model_path = model_registry.fetch(model_name)
     if not os.path.exists(model_path):
         raise RuntimeError(
-            f"Could not find the model for counting {model_name}."
-            "This is likely because you have installed the package in an incorrect way."
-            "Please follow the installation instructions in the README exactly and try again."
+            f"Could not find the model for counting {model_name} at {model_path}. "
+            "This is likely because you have installed the package in an incorrect way. "
+            "Please follow the installation instructions in the documentation exactly and try again."
         )
     return model_path
 

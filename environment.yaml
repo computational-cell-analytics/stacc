@@ -7,6 +7,7 @@ dependencies:
     - imageio
     - napari
     - pip
+    - pooch
     - pyqt
     - pytorch
     - tensorboard
