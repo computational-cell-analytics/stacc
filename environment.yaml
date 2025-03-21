@@ -13,3 +13,4 @@ dependencies:
     - tensorboard
     - torch_em
     - torchvision
+    - xarray <2025.3.0
