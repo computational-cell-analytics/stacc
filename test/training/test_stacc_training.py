@@ -65,6 +65,7 @@ class TestStaccTraining(unittest.TestCase):
 
     def test_run_stacc_training(self):
         from stacc.training import run_stacc_training, get_stacc_data_loader, width_to_sigma
+        from stacc.training.util import export_bioimageio
 
         train_dict = self._create_napari_training_data()
 
@@ -82,6 +83,17 @@ class TestStaccTraining(unittest.TestCase):
         # Check that the model has been trained
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "best.pt"))
         self.assertTrue(os.path.join(self.tmp_folder, "checkpoints", model_name, "latest.pt"))
+
+        # Test the bioimageio export.
+        export_path = os.path.join(self.tmp_folder, f"{model_name}.zip")
+        sample_data = train_dict["val"]["images"][0]
+        export_bioimageio(
+            checkpoint_path=os.path.join(self.tmp_folder, "checkpoints", model_name),
+            output_path=export_path,
+            sample_data=sample_data,
+            name=model_name,
+        )
+        self.assertTrue(os.path.exists(export_path))
 
     def test_run_stacc_training_run_stacc_training_from_napari_annotations(self):
         from stacc.training import run_stacc_training_from_napari_annotations

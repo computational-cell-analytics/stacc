@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -9,6 +9,7 @@ import torch
 from skimage.io import imread
 from skimage.filters import gaussian
 from torch_em.util import ensure_spatial_array, ensure_tensor_with_channels, load_image
+from torch_em.transform.raw import standardize
 from torch.utils.data import DataLoader
 
 
@@ -461,6 +462,7 @@ def get_stacc_data_loader(
     sigma: Optional[float] = None,
     lower_bound: Optional[float] = None,
     upper_bound: Optional[float] = None,
+    raw_transform: Optional[Callable] = None,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """Get training, validation and test data loader for a STACC model.
 
@@ -474,6 +476,8 @@ def get_stacc_data_loader(
         sigma: Sigma value for Gaussian blur. If None, individual stamps are applied.
         lower_bound: The minimum allowable value for sigma.
         upper_bound: The maximum allowable value for sigma.
+        raw_transform: The transform applied to the input image data.
+            By default the data will be standardized.
 
     Returns:
         The data loader for the training split.
@@ -484,10 +488,15 @@ def get_stacc_data_loader(
     train_images, train_labels, val_images, val_labels, test_images, test_labels =\
         _split_data_paths_into_training_dataset(train_dataset_file)
 
+    if raw_transform is None:
+        raw_transform = standardize
+
     train_set = StaccImageCollectionDataset(train_images, train_labels, patch_shape, eps=eps, sigma=sigma,
-                                            lower_bound=lower_bound, upper_bound=upper_bound)
+                                            lower_bound=lower_bound, upper_bound=upper_bound,
+                                            raw_transform=raw_transform)
     val_set = StaccImageCollectionDataset(val_images, val_labels, patch_shape, eps=eps, sigma=sigma,
-                                          lower_bound=lower_bound, upper_bound=upper_bound)
+                                          lower_bound=lower_bound, upper_bound=upper_bound,
+                                          raw_transform=raw_transform)
 
     train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
     val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
@@ -499,7 +508,8 @@ def get_stacc_data_loader(
         test_dataloader = None
     else:
         test_set = StaccImageCollectionDataset(test_images, test_labels, patch_shape, eps=eps, sigma=sigma,
-                                               lower_bound=lower_bound, upper_bound=upper_bound)
+                                               lower_bound=lower_bound, upper_bound=upper_bound,
+                                               raw_transform=raw_transform)
         test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=n_workers)
         test_dataloader.shuffle = True
 
