@@ -75,11 +75,10 @@ def export_bioimageio(
         description = "STACC is a model for detection and counting of objects in images or micrographs."
 
     # TODO the correct license
-    license = "MIT"
+    license = ""
 
-    # TODO path to a generic documentation file
     if documentation is None:
-        documentation = ""
+        documentation = "https://github.com/computational-cell-analytics/stacc/tree/main/scripts/model_export/documentation.md"  # noqa
     git_repo = "https://github.com/computational-cell-analytics/stacc"
 
     # TODO STACC config (= best values for find maxima)
