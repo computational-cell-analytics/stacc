@@ -1,8 +1,12 @@
 import json
 from dataclasses import dataclass
-from typing import Tuple, List
+from typing import Dict, List, Optional, Tuple, Union
 
+import imageio.v3 as imageio
+import numpy as np
 import torch
+from torch_em.util.modelzoo import export_bioimageio_model
+from torch_em.transform.raw import standardize
 
 
 def export_model(checkpoint_path: str, export_path: str) -> None:
@@ -20,6 +24,83 @@ def export_model(checkpoint_path: str, export_path: str) -> None:
     print("The model from", checkpoint_path, "was created with the following kwargs:")
     print(model_kwargs)
     torch.save(model_state, export_path)
+
+
+def export_bioimageio(
+    checkpoint_path: str,
+    output_path: str,
+    sample_data: Union[str, np.ndarray],
+    name: str,
+    description: Optional[str] = None,
+    authors: Optional[List[Dict]] = None,
+    additional_citations: Optional[List[Dict]] = None,
+    additional_tags: Optional[List[str]] = None,
+    documentation: Optional[str] = None,
+) -> None:
+    """Export a trained model checkpoint as bioimage.io model.
+
+    Args:
+        checkpoint path: The checkpoint of the trained model.
+        output_path: The path for saving the exported model.
+        sample_data: The path to the input sample / test data.
+            This has to be an image file that can be loaded by imageio or a numpy array.
+        name: The name of the model.
+        description: The description of this model. If None, a standard description for the STACC model will be used.
+        authors: The developers of this model. If None, the STACC core developers will be listed.
+        additional_citations: Additional citations for this model. If None, only the STACC publication will be listed.
+        additional_tags: Additional tags for this model.
+        documentation: The documentation for this model. By default a general documentation of STACC will be used.
+    """
+    if isinstance(sample_data, str):
+        sample_data = imageio.imread(sample_data)
+        sample_data = standardize(sample_data)
+
+    if authors is None:
+        authors = [
+            {"name": "Julia Jeremias", "github_user": "julia-jeremias"},
+            {"name": "Constantin Pape", "github_user": "constantinpape"}
+        ]
+
+    tags = ["unet2d", "pytorch", "counting"]
+    if additional_tags is not None:
+        tags += additional_tags
+
+    cite = [
+        {"text": "Pape and Jeremias", "doi": "10.1515/mim-2024-0021"}
+    ]
+    if additional_citations is not None:
+        cite += additional_citations
+
+    if description is None:
+        description = "STACC is a model for detection and counting of objects in images or micrographs."
+
+    # TODO this is just a placeholder, enter the correct license later
+    license = "MIT"
+
+    if documentation is None:
+        documentation = "https://github.com/computational-cell-analytics/stacc/tree/main/scripts/model_export/documentation.md"  # noqa
+    git_repo = "https://github.com/computational-cell-analytics/stacc"
+
+    # TODO STACC config (= best values for find maxima)
+    config = {}
+
+    export_bioimageio_model(
+        checkpoint=checkpoint_path,
+        output_path=output_path,
+        input_data=sample_data,
+        name=name,
+        description=description,
+        authors=authors,
+        tags=tags,
+        license=license,
+        documentation=documentation,
+        git_repo=git_repo,
+        cite=cite,
+        input_optional_parameters=False,
+        for_deepimagej=True,
+        maintainers=authors,
+        config=config,
+    )
 
 
 @dataclass
