@@ -74,8 +74,8 @@ def export_bioimageio(
     if description is None:
         description = "STACC is a model for detection and counting of objects in images or micrographs."
 
-    # TODO the correct license
-    license = ""
+    # TODO this is just a placeholder, enter the correct license later
+    license = "MIT"
 
     if documentation is None:
         documentation = "https://github.com/computational-cell-analytics/stacc/tree/main/scripts/model_export/documentation.md"  # noqa

@@ -5,7 +5,7 @@ agar_citation = {
 }
 sample_data = "../../images/colony_example_image.jpg"
 export_bioimageio(
-    checkpoint_path="",  # TODO
+    checkpoint_path="./checkpoints",  # TODO
     output_path="./stacc-colony-counting.zip",
     sample_data=sample_data,
     name="stacc-colony-counting",
