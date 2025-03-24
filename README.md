@@ -2,11 +2,13 @@
 
 STACC is a tool for automated counting in biomedical images.
 
-You can find its documentation in the file `stacc-documentation.pdf`.
-This documentation is built with pdoc and will be hosted online as soon as our tool is published.
-The source for the documentation can be found in `doc/documentation.md`
+You can find its documentation at [https://computational-cell-analytics.github.io/stacc/](https://computational-cell-analytics.github.io/stacc/).
 
-The documentation also contains an (automatically generated) API documentation of the python library, which is not included in the pdf (but will be part of the online documentation).
+**We are in the process of finalizing the first version of STACC and will soon add a license to this repository and upload the two pre-trained models to BioImage.IO.**
+
+
+## Building the Documentation
+
 To build the documentation yourself, install `pdoc` via
 ```
 pip install pdoc
