@@ -29,7 +29,7 @@ def main(args):
         patch_shape=config.patch_shape,
         sigma=config.sigma,
         lower_bound=config.lower_bound,
-        upper_bound=config.upper_bound
+        upper_bound=config.upper_bound,
     )
 
     run_stacc_training(
@@ -40,7 +40,7 @@ def main(args):
         device="cuda",
         pretrained_model_path=config.pretrained_model_path,
         save_new_model_path=config.save_new_model_path,
-        iterations=config.iterations
+        iterations=config.iterations,
     )
 
     #
@@ -56,13 +56,11 @@ if __name__ == "__main__":
 
     # Add an argument for the configuration file and parse it
     parser.add_argument(
-        "config",
-        type=str,
-        help="Path to the JSON configuration file containing model and training parameters."
+        "config", type=str, help="Path to the JSON configuration file containing model and training parameters."
     )
     parser.add_argument(
         "--export_path",
-        help="Path for exporting the trained model in a format that is compatible with the napri plugin."
+        help="Path for exporting the trained model in a format that is compatible with the napri plugin.",
     )
     args = parser.parse_args()
 
