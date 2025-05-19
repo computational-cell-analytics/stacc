@@ -5,11 +5,11 @@ agar_citation = {
 }
 sample_data = "../../images/colony_example_image.jpg"
 export_bioimageio(
-    checkpoint_path="./checkpoints",  # TODO
+    checkpoint_path="./checkpoints/stacc_agar_normalized_images",
     output_path="./stacc-colony-counting.zip",
     sample_data=sample_data,
     name="stacc-colony-counting",
-    description="",  # TODO
+    description="",
     additional_citations=[agar_citation],
     additional_tags=["colonies", "bacteria", "funghi"],
     documentation="./documentation_colonies.md",

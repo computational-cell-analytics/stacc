@@ -26,6 +26,13 @@ def export_model(checkpoint_path: str, export_path: str) -> None:
     torch.save(model_state, export_path)
 
 
+def _crop_to_divisible(sample_data, divisor=16):
+    divisible_shape = tuple(sh - sh % divisor for sh in sample_data.shape[:2])
+    crop = tuple(slice(0, dsh) for dsh in divisible_shape)
+    cropped = sample_data[crop]
+    return cropped
+
+
 def export_bioimageio(
     checkpoint_path: str,
     output_path: str,
@@ -83,6 +90,10 @@ def export_bioimageio(
 
     # TODO STACC config (= best values for find maxima)
     config = {}
+
+    sample_data = _crop_to_divisible(sample_data)
+    if sample_data.ndim == 3 and sample_data.shape[-1] < sample_data.shape[0]:
+        sample_data = sample_data.transpose((2, 0, 1))
 
     export_bioimageio_model(
         checkpoint=checkpoint_path,
