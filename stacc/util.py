@@ -106,7 +106,9 @@ def get_model(model_name: str, model_path: Optional[Union[str, Path]] = None) ->
             "final_activation": None,
         }
 
-    model_state = torch.load(model_path, weights_only=False)["model_state"]
+    model_state = torch.load(model_path, weights_only=False)
+    if "model_state" in model_state:
+        model_state = model_state["model_state"]
     model = UNet2d(**model_kwargs)
     model.load_state_dict(model_state)
 
