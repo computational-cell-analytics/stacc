@@ -11,10 +11,7 @@ from .util import get_model, standardize, get_postprocessing_parameters
 
 def _pad_image(input_, min_divisible_):
     if any(sh % md != 0 for sh, md in zip(input_.shape, min_divisible_)):
-        pad_width = tuple(
-            (0, 0 if sh % md == 0 else md - sh % md)
-            for sh, md in zip(input_.shape, min_divisible_)
-        )
+        pad_width = tuple((0, 0 if sh % md == 0 else md - sh % md) for sh, md in zip(input_.shape, min_divisible_))
         crop_padding = tuple(slice(0, sh) for sh in input_.shape)
         input_ = np.pad(input_, pad_width, mode="reflect")
     else:
@@ -118,8 +115,7 @@ def _get_inputs(input_, pattern):
 
 
 def main():
-    """@private
-    """
+    """@private"""
     import argparse
     import pandas as pd
     from pathlib import Path
@@ -131,21 +127,28 @@ def main():
         "to count the cells in the cell example image."
     )
     parser.add_argument(
-        "-i", "--input", required=True,
-        help="The filepath to the input. This can either point to an image or a folder with images."
+        "-i",
+        "--input",
+        required=True,
+        help="The filepath to the input. This can either point to an image or a folder with images.",
     )
     parser.add_argument(
-        "-p", "--pattern", default="*",
-        help="A pattern to select images from the input folder. For example, you can pass '*.png' to select only png images."  # noqa
+        "-p",
+        "--pattern",
+        default="*",
+        help="A pattern to select images from the input folder. For example, you can pass '*.png' to select only png images.",  # noqa
     )
     parser.add_argument(
-        "-m", "--model", default="colonies",
+        "-m",
+        "--model",
+        default="colonies",
         help="The model to use for counting. Can either be 'colonies' for colony counting or 'cells' for cell counting."
-        " By default the model for colony counting is used."
+        " By default the model for colony counting is used.",
     )
     parser.add_argument(
-        "-o", "--output",
-        help="The output folder for saving results. If it is given a csv with the centroids of counted objects will be saved for each image."  # noqa
+        "-o",
+        "--output",
+        help="The output folder for saving results. If it is given a csv with the centroids of counted objects will be saved for each image.",  # noqa
     )
     parser.add_argument("--custom_model", help="Path to a custom trained model.")
     args = parser.parse_args()
