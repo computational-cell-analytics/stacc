@@ -119,8 +119,6 @@ def main():
     import argparse
     import pandas as pd
     from pathlib import Path
-    import imageio
-    import os
 
     parser = argparse.ArgumentParser(
         description="Count the number of colonies or cells in an image or in multiple images. "
