@@ -164,10 +164,18 @@ def main():
 
     model = get_model(args.model, args.custom_model)
 
-    # check that all arguments are given for custom model
-    if args.custom_model and args.custom_distance is not None and args.custom_threshold is not None:
-        min_distance = args.custom_distance
-        threshold_abs = args.custom_threshold
+    # Check that all arguments are given for custom model
+    if args.custom_model:
+        if args.custom_distance is not None and args.custom_threshold is not None:
+            min_distance = args.custom_distance
+            threshold_abs = args.custom_threshold
+        else:
+            missing_params = []
+            if args.custom_distance is None:
+                missing_params.append("custom_distance")
+            if args.custom_threshold is None:
+                missing_params.append("custom_threshold")
+            raise ValueError(f"Missing parameters for custom model: {', '.join(missing_params)}. Please provide both.")
     else:
         min_distance, threshold_abs = get_postprocessing_parameters(args.model)
 
