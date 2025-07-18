@@ -11,10 +11,7 @@ from .util import get_model, standardize, get_postprocessing_parameters
 
 def _pad_image(input_, min_divisible_):
     if any(sh % md != 0 for sh, md in zip(input_.shape, min_divisible_)):
-        pad_width = tuple(
-            (0, 0 if sh % md == 0 else md - sh % md)
-            for sh, md in zip(input_.shape, min_divisible_)
-        )
+        pad_width = tuple((0, 0 if sh % md == 0 else md - sh % md) for sh, md in zip(input_.shape, min_divisible_))
         crop_padding = tuple(slice(0, sh) for sh in input_.shape)
         input_ = np.pad(input_, pad_width, mode="reflect")
     else:
@@ -118,8 +115,7 @@ def _get_inputs(input_, pattern):
 
 
 def main():
-    """@private
-    """
+    """@private"""
     import argparse
     import pandas as pd
     from pathlib import Path
@@ -131,31 +127,57 @@ def main():
         "to count the cells in the cell example image."
     )
     parser.add_argument(
-        "-i", "--input", required=True,
-        help="The filepath to the input. This can either point to an image or a folder with images."
+        "-i",
+        "--input",
+        required=True,
+        help="The filepath to the input. This can either point to an image or a folder with images.",
     )
     parser.add_argument(
-        "-p", "--pattern", default="*",
-        help="A pattern to select images from the input folder. For example, you can pass '*.png' to select only png images."  # noqa
+        "-p",
+        "--pattern",
+        default="*",
+        help="A pattern to select images from the input folder. For example, you can pass '*.png' to select only png images.",  # noqa
     )
     parser.add_argument(
-        "-m", "--model", default="colonies",
+        "-m",
+        "--model",
+        default="colonies",
         help="The model to use for counting. Can either be 'colonies' for colony counting or 'cells' for cell counting."
-        " By default the model for colony counting is used."
+        " By default the model for colony counting is used.",
     )
     parser.add_argument(
-        "-o", "--output",
-        help="The output folder for saving results. If it is given a csv with the centroids of counted objects will be saved for each image."  # noqa
+        "-o",
+        "--output",
+        help="The output folder for saving results. If it is given a csv with the centroids of counted objects will be saved for each image.",
     )
     parser.add_argument("--custom_model", help="Path to a custom trained model.")
+    parser.add_argument(
+        "--custom_distance", type=int, help="Corresponding min_distance value for postprocessing the custom model."
+    )
+    parser.add_argument(
+        "--custom_threshold", type=float, help="Corresponding threshold_abs value for postprocessing the custom model."
+    )
     args = parser.parse_args()
 
     inputs = _get_inputs(args.input, args.pattern)
     print("Counting", args.model, "in", len(inputs), "image(s).")
 
     model = get_model(args.model, args.custom_model)
-    # TODO enable over-riding this for custom models.
-    min_distance, threshold_abs = get_postprocessing_parameters(args.model)
+
+    # Check that all arguments are given for custom model
+    if args.custom_model:
+        if args.custom_distance is not None and args.custom_threshold is not None:
+            min_distance = args.custom_distance
+            threshold_abs = args.custom_threshold
+        else:
+            missing_params = []
+            if args.custom_distance is None:
+                missing_params.append("custom_distance")
+            if args.custom_threshold is None:
+                missing_params.append("custom_threshold")
+            raise ValueError(f"Missing parameters for custom model: {', '.join(missing_params)}. Please provide both.")
+    else:
+        min_distance, threshold_abs = get_postprocessing_parameters(args.model)
 
     for image_path in inputs:
         image = imageio.imread(image_path)
