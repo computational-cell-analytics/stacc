@@ -155,9 +155,9 @@ def create_stacc_ground_truth_label_from_json(
 
     bboxes = label_dict["labels"]
     n_colonies = len(bboxes)  # Number of annotations / bounding boxes
+    image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
 
     if bounding_box is None:
-        image_id = _get_image_id(image_path)  # Get image id and check if jpg or tif image
         im = imread(image_path)
         n_rows, n_columns = im.shape[:2]
     else:

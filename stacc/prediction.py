@@ -165,7 +165,7 @@ def main():
     model = get_model(args.model, args.custom_model)
 
     # Check that all arguments are given for custom model
-    if args.custom_model:
+    if args.custom_model is not None and args.custom_distance is not None and args.custom_threshold is not None:
         if args.custom_distance is not None and args.custom_threshold is not None:
             min_distance = args.custom_distance
             threshold_abs = args.custom_threshold
