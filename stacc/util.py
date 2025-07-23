@@ -89,13 +89,21 @@ def get_model(model_name: str, model_path: Optional[Union[str, Path]] = None) ->
 
     if model_name == "cells":
         model_kwargs = {
-            "in_channels": 1, "out_channels": 1, "depth": 4,
-            "initial_features": 32, "gain": 2, "final_activation": None
+            "in_channels": 1,
+            "out_channels": 1,
+            "depth": 4,
+            "initial_features": 32,
+            "gain": 2,
+            "final_activation": None,
         }
     else:
         model_kwargs = {
-            "in_channels": 3, "out_channels": 1, "depth": 4,
-            "initial_features": 32, "gain": 2, "final_activation": None
+            "in_channels": 3,
+            "out_channels": 1,
+            "depth": 4,
+            "initial_features": 32,
+            "gain": 2,
+            "final_activation": None,
         }
 
     model_state = torch.load(model_path, weights_only=True)
@@ -106,22 +114,20 @@ def get_model(model_name: str, model_path: Optional[Union[str, Path]] = None) ->
 
 
 def standardize(raw, mean=None, std=None, axis=None, eps=1e-7):
-    """@private
-    """
+    """@private"""
     raw = raw.astype("float32")
 
     mean = raw.mean(axis=axis, keepdims=True) if mean is None else mean
     raw -= mean
 
     std = raw.std(axis=axis, keepdims=True) if std is None else std
-    raw /= (std + eps)
+    raw /= std + eps
 
     return raw
 
 
 def _get_default_device():
-    """Copied from MicroSAM
-    """
+    """Copied from MicroSAM"""
     # check that we're in CI and use the CPU if we are
     # otherwise the tests may run out of memory on MAC if MPS is used.
     if os.getenv("GITHUB_ACTIONS") == "true":
@@ -165,8 +171,7 @@ def get_device(device: Optional[Union[str, torch.device]] = None) -> Union[str, 
         elif device_type.lower() == "cpu":
             pass  # cpu is always available
         else:
-            raise RuntimeError(f"Unsupported device: {device}\n"
-                               "Please choose from 'cpu', 'cuda', or 'mps'.")
+            raise RuntimeError(f"Unsupported device: {device}\n" "Please choose from 'cpu', 'cuda', or 'mps'.")
     return device
 
 

@@ -22,7 +22,7 @@ def _pad_image(input_, min_divisible_):
 def run_counting(
     model: torch.nn.Module,
     image: np.ndarray,
-    min_distance: float = 10,
+    min_distance: int = 10,
     threshold_abs: float = 1.0,
 ) -> np.ndarray:
     """Predict object centroid coordinates for an input image.
@@ -76,7 +76,7 @@ def run_counting(
 def run_counting_stacked(
     model: torch.nn.Module,
     image_stack: np.ndarray,
-    min_distance: float = 10,
+    min_distance: int = 10,
     threshold_abs: float = 1.0,
 ) -> np.ndarray:
     """Predict object centroid coordinates for an image stack.
