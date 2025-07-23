@@ -109,6 +109,18 @@ You can then use this model for prediction in the [napari plugin](#napari-plugin
 
 Even if none of the available counting models work for your data, this approach can be used to generate training data and train a custom model relatively quickly.
 
+## Optimizing Post-Processing Parameters
+
+After training a custom model, you may want to find the optimal post-processing parameters to achieve the best results. The command line function `stacc.gridsearch` is designed to help you find the optimal post-processing parameters for your trained model.
+
+### Usage
+
+For example, to perform a gridsearch for optimizing post-processing parameters, you can use the following command:
+
+```bash
+stacc.gridsearch -c path/to/config/file.json -cm path/to/custom/model/best_exported.pt -m cells -o path/to/output/directory
+```
+
 
 ## Python Library
 

@@ -65,16 +65,14 @@ def export_bioimageio(
     if authors is None:
         authors = [
             {"name": "Julia Jeremias", "github_user": "julia-jeremias"},
-            {"name": "Constantin Pape", "github_user": "constantinpape"}
+            {"name": "Constantin Pape", "github_user": "constantinpape"},
         ]
 
     tags = ["unet2d", "pytorch", "counting"]
     if additional_tags is not None:
         tags += additional_tags
 
-    cite = [
-        {"text": "Pape and Jeremias", "doi": "10.1515/mim-2024-0021"}
-    ]
+    cite = [{"text": "Pape and Jeremias", "doi": "10.1515/mim-2024-0021"}]
     if additional_citations is not None:
         cite += additional_citations
 
@@ -137,6 +135,7 @@ class TrainingConfig:
         augmentations: List of augmentations to apply.
         comment: Additional training description
     """
+
     model_name: str
     train_dataset: str
     test_dataset: str
