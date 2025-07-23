@@ -20,13 +20,20 @@ def overlay_points_on_image(image: np.ndarray, points: np.ndarray, output_folder
     Returns:
         None
     """
+    # Convert the image to RGB if it's grayscale
+    if len(image.shape) == 2:  # Check if the image is grayscale
+        image = np.stack((image,) * 3, axis=-1)  # Convert to RGB by stacking the grayscale channel
+
     # Convert the image to PIL format for drawing
     img = Image.fromarray(image)
     draw = ImageDraw.Draw(img)
 
     # Overlay points on the image
+    point_size = 2
     for y, x in points:
-        draw.ellipse((x - 5, y - 5, x + 5, y + 5), fill="red", outline="red")  # Draw a small circle at each point
+        draw.ellipse(
+            (x - point_size, y - point_size, x + point_size, y + point_size), fill=(255, 237, 0), outline=(255, 237, 0)
+        )  # Draw a yellow circle at each point
 
     # Construct the output file path using the image file name
     output_path = os.path.join(output_folder, f"{image_name}_results.jpg")
